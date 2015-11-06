@@ -1,0 +1,14 @@
+---
+title: "Math 154 Project"
+author: "SM"
+date: "11/5/2015"
+output: html_document
+---
+
+Will knit in HTML, it cannot locate TeX to knit to pdf
+
+```{r}
+2+2
+
+
+```
