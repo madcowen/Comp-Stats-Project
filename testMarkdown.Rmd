@@ -12,3 +12,7 @@ Will knit in HTML, it cannot locate TeX to knit to pdf
 
 
 ```
+
+I want to make specific edits that don't affect master branch.
+
+Need to check another thing.
