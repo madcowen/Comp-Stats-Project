@@ -1,0 +1,53 @@
+---
+title: "idea for data scraping for buoys"
+author: "SM"
+date: "11/6/2015"
+output: html_document
+---
+
+
+```{r}
+#example data: 2009 buoy 32487
+#the web url
+site <- "http://www.ndbc.noaa.gov/view_text_file.php?filename=32487h2009.txt.gz&dir=data/historical/stdmet/"
+
+# call in data with try command in while loop
+i <- 1
+while (i < 2){
+  theData <- try(read.table(site,sep=""))
+  if (class(theData) == "try-error") {
+    next
+  } else {
+    i <- i + 1
+  }
+}
+
+#look at the data
+head(theData, 20)
+
+#data is already a data frame
+class(theData)
+
+#assign to new data frame to do cleaning on
+cleanData<- theData
+
+#add names to variables
+names(cleanData)<-c("year", "month", "day", "hour", "min", "WDIR", "WSPD", "GST", "WVHT", "DPD", "APD", "MWD", "PRES", "ATMP", "WTMP", "DEWP", "VIS", "TIDE")
+
+#make all columns numeric
+cleanData <- as.data.frame(apply(cleanData[,1:length(cleanData)], 2, as.numeric))
+
+#check out clean data
+head(cleanData)
+```
+
+I pulled data from url.  It was already a data frame and looked nice, so just added the variable names to the top.  The class of some of the columns were integer, so I just changed all columns to be of class numeric.
+
+The data was already pretty tidy.
+
+
+Note: 
+-we probably want to make year month day into ymd.  Or maybe make year month day hour min all one variable?  
+-Would we need to use lubridate?  
+-we would also want to pull out the variable we want   
+-we would want to set up a naming convention for all the buoy datasets  
