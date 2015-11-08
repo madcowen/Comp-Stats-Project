@@ -51,3 +51,46 @@ Note:
 -Would we need to use lubridate?  
 -we would also want to pull out the variable we want   
 -we would want to set up a naming convention for all the buoy datasets  
+
+```{r}
+#make a loop to pull in all buoy data for a set of buoys
+
+buoyNumber <- c(32487,42007)
+buoyYear <- c(2009,1987)
+setOfBuoys <- vector("list",length(buoyNumber))
+
+dataName <- seq(1,length(buoyNumber), by=1)
+
+for(j in 1:length(buoyNumber)){
+  site <- paste("http://www.ndbc.noaa.gov/view_text_file.php?filename=", buoyNumber[j], "h", buoyYear[j], ".txt.gz&dir=data/historical/stdmet/", sep ="")
+  
+  data <- paste("data",dataName[j], sep="")
+  
+  # call in data with try command in while loop
+  i <- 1
+  while (i < 2){
+    data <- try(read.table(site,sep=""))
+    if (class(data) == "try-error") {
+      next
+    } else {
+      i <- i + 1
+    }
+  }
+
+
+  #add names to variables
+  names(data)<-c("year", "month", "day", "hour", "min", "WDIR", "WSPD", "GST","WVHT","DPD", "APD", "MWD", "PRES", "ATMP", "WTMP", "DEWP", "VIS", "TIDE")
+
+#make all columns numeric and put in vector
+
+setOfBuoys[[j]]<- as.data.frame(apply(data[,1:length(data)], 2, as.numeric))
+
+}
+
+```
+
+The code above uses a for loop to pull in dataset for a set of buoys.  It stores the dataset for each buoy in a list called setOf Buoys.  In order to run this for several buoys we will need to add another for loop and pick a naming convention for setOfBuoys.
+
+
+NEED TO TEST CODE ABOVE
+PROBLEM THAT NOT ALL BUOY DATASETS HAVE SAME NUMBER OF VARIABLES
