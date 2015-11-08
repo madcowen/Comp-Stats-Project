@@ -1,8 +1,10 @@
+# We'll use the XML package to get info from web pages
 require(XML)
 
 # Read and parse HTML file
 buoylist.html = htmlTreeParse('http://www.ndbc.noaa.gov/to_station.shtml',
                          useInternal = TRUE)
+# make a vector of each hyperlink
 buoylist.text = unlist(xpathApply(buoylist.html, "//a/@href"))
 
 hrefIndices <- grep("station=", buoylist.text)
@@ -32,13 +34,31 @@ for(i in 1:length(buoyNums)){
 
 buoyNums <- buoyNums[-which(is.na(lat))]
 lat <- lat[-which(is.na(lat))]
-lon <- lon[-which(is.na(lat))]
-
-historical.html <- htmlTreeParse('http://www.ndbc.noaa.gov/station_history.php?station=42004',
-                                 useInternal = TRUE)
-#historical.text = unlist(xpathApply(historical.html, '//a/@href'))
-#grep('filename', historical.text)
+lon <- lon[-which(is.na(lon))]
 
 
-historical.text = unlist(xpathApply(historical.html, '//li', xmlValue))
-historical.text
+stormYears <- seq(from=2000, to=2015, by=1)
+buoyLocsAndYears <- as.data.frame(matrix(nrow=length(buoyNums), ncol=19))
+names(buoyLocsAndYears) <- c("BuoyNumber", "Latitude", "Longitude", as.character(stormYears))
+
+for(i in 1:length(buoyNums)){
+  historical.html <- htmlTreeParse(paste('http://www.ndbc.noaa.gov/station_history.php?station=', buoyNums[i]),
+                                   useInternal = TRUE)
+  
+  historical.text = unlist(xpathApply(historical.html, '//li', xmlValue))
+  
+  histString <- historical.text[grep('Historical data', historical.text)]
+  endpoints <- unlist(gregexpr('\n', histString))[c(1,2)]
+  yearString <- substr(histString, endpoints[1]+2, endpoints[2]-1)
+  yearsOfHistData <- as.numeric(unlist(strsplit(yearString, " ")))
+  buoyLocsAndYears[i, 4:19] <- stormYears %in% yearsOfHistData
+}
+buoyLocsAndYears$BuoyNumber <- buoyNums
+buoyLocsAndYears$Latitude <- lat
+buoyLocsAndYears$Longitude <- -1*lon
+
+# save the data frame as a text file
+dput(buoyLocsAndYears, "buoyLocsAndYears.txt")
+
+# If you want to access it again, use this
+# dget("buoyLocsAndYears.txt")
