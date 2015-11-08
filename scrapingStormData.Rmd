@@ -21,7 +21,7 @@ stormYearsFile <- c("2000.csv","2001.csv","2002.csv","2003.csv","2004.csv","2005
 
 allStorms <- vector("list",length(stormYearsFile)) 
 
-#pull in csv files and assign to a vector of datasets
+#pull in csv files and assign to a list of datasets
 for(i in 1:length(stormYearsFile)){
   
   allStorms[[i]] <-read.csv(paste("~/Comp-Stats-Project/storm",stormYearsFile[i], sep=""))
@@ -63,8 +63,8 @@ Figure 2. IBTrACS Storm Data Original File
 After saving the datasets as storm*year*, we removed the first row (IBTrACS -- Version: v03r07 ) and the third row that gives units for the variable, so when we read in the csv files the header would appear correctly.
 
 
-To read in the csv files for the storm data, we used a for loop that read in each storm data set and put it in a vector of datasets called allStorms.  Then for each dataset storm*year*, a for loop was used to discard all columns after 19 since these were not variables of interest and often had lots of missing data (labelled as -999).  
+To read in the csv files for the storm data, we used a for loop that read in each storm data set and put it in a list of datasets called allStorms.  Then for each dataset storm*year*, a for loop was used to discard all columns after 19 since these were not variables of interest and often had lots of missing data (labelled as -999).  
 
-Finally, a for loop was used to removed all rows in each storm*year* dataset that has missing data (-999) for latitude and longitude.  These cleaner datasets were assigned to the vector cleanStorms.
+Finally, a for loop was used to removed all rows in each storm*year* dataset that has missing data (-999) for latitude and longitude.  These cleaner datasets were assigned to the list cleanStorms.
 
-In summary, cleanStorms is a vector that holds partially cleaned up datasets of storms from years 2000 to 2015.  (i.e. cleansStorms[[1]] is the dataset for storms in the year 2000).  
+In summary, cleanStorms is a list that holds partially cleaned up datasets of storms from years 2000 to 2015.  (i.e. cleansStorms[[1]] is the dataset for storms in the year 2000).  
