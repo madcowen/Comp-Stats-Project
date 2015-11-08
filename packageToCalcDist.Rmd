@@ -1,0 +1,28 @@
+---
+title: "calculating distances lat long"
+author: "SM"
+date: "11/7/2015"
+output: html_document
+---
+
+possible package to calculate distances between points w longitudes/latitudes
+
+```{r, message = FALSE}
+require(geosphere)
+
+```
+
+
+```{r}
+
+someLong <- cleanStorms[[1]]$Longitude[c(1,80)]
+someLat<- cleanStorms[[1]]$Latitude[c(1,80)]
+
+
+point1 <- c(someLong[1], someLat[1])
+point2 <- c(someLong[2], someLat[2])
+
+#meters
+distGeo(point1, point2)
+
+```
