@@ -4,7 +4,7 @@ author: "SM"
 date: "11/6/2015"
 output: html_document
 ---
-
+http://www.ndbc.noaa.gov/historical_data.shtml
 
 ```{r}
 #example data: 2009 buoy 32487
@@ -55,17 +55,15 @@ Note:
 ```{r}
 #make a loop to pull in all buoy data for a set of buoys
 
-buoyNumber <- c(32487,42007)
-buoyYear <- c(2009,1987)
+buoyNumber <- c(32487,41024)
+buoyYear <- c(2009,2014)
 setOfBuoys <- vector("list",length(buoyNumber))
 
 dataName <- seq(1,length(buoyNumber), by=1)
 
 for(j in 1:length(buoyNumber)){
   site <- paste("http://www.ndbc.noaa.gov/view_text_file.php?filename=", buoyNumber[j], "h", buoyYear[j], ".txt.gz&dir=data/historical/stdmet/", sep ="")
-  
-  data <- paste("data",dataName[j], sep="")
-  
+
   # call in data with try command in while loop
   i <- 1
   while (i < 2){
