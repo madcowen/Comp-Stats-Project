@@ -39,7 +39,7 @@ lon <- lon[-which(is.na(lon))]
 
 stormYears <- seq(from=2000, to=2015, by=1)
 buoyLocsAndYears <- as.data.frame(matrix(nrow=length(buoyNums), ncol=19))
-names(buoyLocsAndYears) <- c("BuoyNumber", "Latitude", "Longitude", as.character(stormYears))
+names(buoyLocsAndYears) <- c("BuoyNumber", "Latitude", "Longitude", paste("year", as.character(stormYears), sep=""))
 
 for(i in 1:length(buoyNums)){
   historical.html <- htmlTreeParse(paste('http://www.ndbc.noaa.gov/station_history.php?station=', buoyNums[i]),
