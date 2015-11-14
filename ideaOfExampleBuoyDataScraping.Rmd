@@ -4,6 +4,9 @@ author: "SM"
 date: "11/6/2015"
 output: html_document
 ---
+
+Note: Starting a new file for actual buoy data scraping called BuoyDataScraping
+
 http://www.ndbc.noaa.gov/historical_data.shtml
 
 ```{r}
@@ -14,7 +17,7 @@ site <- "http://www.ndbc.noaa.gov/view_text_file.php?filename=32487h2009.txt.gz&
 # call in data with try command in while loop
 i <- 1
 while (i < 2){
-  theData <- try(read.table(site,sep=""))
+  theData <- try(read.table(site,sep="",comment.char=""))
   if (class(theData) == "try-error") {
     next
   } else {
@@ -33,6 +36,10 @@ cleanData<- theData
 
 #add names to variables
 names(cleanData)<-c("year", "month", "day", "hour", "min", "WDIR", "WSPD", "GST", "WVHT", "DPD", "APD", "MWD", "PRES", "ATMP", "WTMP", "DEWP", "VIS", "TIDE")
+
+#FOR .TXT THAT HAVE 2 ROWS OF COMMENTED OUT VARIABLE NAMES
+#ADD A CHECK TO SEE IF FIRST COL OF VARIABLE NAMES MATCHES NAMES ASSIGNED
+#WILL ALSO NEED TO REMOVE FIRST 2 COLS BEFORE MAKING NUMERIC
 
 #make all columns numeric
 cleanData <- as.data.frame(apply(cleanData[,1:length(cleanData)], 2, as.numeric))
@@ -67,7 +74,7 @@ for(j in 1:length(buoyNumber)){
   # call in data with try command in while loop
   i <- 1
   while (i < 2){
-    data <- try(read.table(site,sep=""))
+    data <- try(read.table(site,sep="",comment.char=""))
     if (class(data) == "try-error") {
       next
     } else {
@@ -76,8 +83,14 @@ for(j in 1:length(buoyNumber)){
   }
 
 
+
   #add names to variables
   names(data)<-c("year", "month", "day", "hour", "min", "WDIR", "WSPD", "GST","WVHT","DPD", "APD", "MWD", "PRES", "ATMP", "WTMP", "DEWP", "VIS", "TIDE")
+  
+#FOR .TXT THAT HAVE 2 ROWS OF COMMENTED OUT VARIABLE NAMES
+#ADD A CHECK TO SEE IF FIRST COL OF VARIABLE NAMES MATCHES NAMES ASSIGNED
+#WILL ALSO NEED TO REMOVE FIRST 2 COLS BEFORE MAKING NUMERIC
+  
 
 #make all columns numeric and put in vector
 
