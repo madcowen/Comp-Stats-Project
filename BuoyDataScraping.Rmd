@@ -1,0 +1,67 @@
+---
+title: "BuoyDataScraping"
+author: "SM"
+date: "11/14/2015"
+output: html_document
+---
+
+http://www.ndbc.noaa.gov/historical_data.shtml
+
+
+I pulled data from url.  It was already a data frame and looked nice, so just added the variable names to the top.  The class of some of the columns were integer, so I just changed all columns to be of class numeric.
+
+The data was already pretty tidy.
+
+
+Note: 
+-we probably want to make year month day into ymd.  Or maybe make year month day hour min all one variable?  
+-Would we need to use lubridate?  
+-we would also want to pull out the variable we want   
+-we would want to set up a naming convention for all the buoy datasets  
+
+```{r}
+#make a loop to pull in all buoy data for a set of buoys
+
+buoyNumber <- c(32487,41024)
+buoyYear <- c(2009,2014)
+setOfBuoys <- vector("list",length(buoyNumber))
+
+dataName <- seq(1,length(buoyNumber), by=1)
+
+for(j in 1:length(buoyNumber)){
+  site <- paste("http://www.ndbc.noaa.gov/view_text_file.php?filename=", buoyNumber[j], "h", buoyYear[j], ".txt.gz&dir=data/historical/stdmet/", sep ="")
+
+  # call in data with try command in while loop
+  i <- 1
+  while (i < 2){
+    data <- try(read.table(site,sep="",comment.char=""))
+    if (class(data) == "try-error") {
+      next
+    } else {
+      i <- i + 1
+    }
+  }
+
+
+
+  #add names to variables
+  names(data)<-c("year", "month", "day", "hour", "min", "WDIR", "WSPD", "GST","WVHT","DPD", "APD", "MWD", "PRES", "ATMP", "WTMP", "DEWP", "VIS", "TIDE")
+  
+#FOR .TXT THAT HAVE 2 ROWS OF COMMENTED OUT VARIABLE NAMES
+#ADD A CHECK TO SEE IF FIRST COL OF VARIABLE NAMES MATCHES NAMES ASSIGNED
+#WILL ALSO NEED TO REMOVE FIRST 2 COLS BEFORE MAKING NUMERIC
+  
+
+#make all columns numeric and put in vector
+
+setOfBuoys[[j]]<- as.data.frame(apply(data[,1:length(data)], 2, as.numeric))
+
+}
+
+```
+
+The code above uses a for loop to pull in dataset for a set of buoys.  It stores the dataset for each buoy in a list called setOf Buoys.  In order to run this for several buoys we will need to add another for loop and pick a naming convention for setOfBuoys.
+
+
+NEED TO TEST CODE ABOVE
+PROBLEM THAT NOT ALL BUOY DATASETS HAVE SAME NUMBER OF VARIABLES
