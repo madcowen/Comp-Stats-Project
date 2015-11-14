@@ -79,11 +79,20 @@ stormCoords <- c(firstRow2000$Longitude, firstRow2000$Latitude)
 buoyLocations <- dget("buoyLocsAndYears.txt")
 buoyLocs2000 <- buoyLocations %>% filter(year2000 == TRUE)
 
+#function to compute dist from storm coord to buoy (buoy takes long/lat of buoy)
+computeDistanceTo <- function(buoy){
+  return(distGeo(stormCoords,buoy))
+}
 
-buoyLocs2000 <- mutate(buoyLocs2000, distToStorm = 
-                         distGeo(stormCoords, c(buoyLocs2000$Longitude, 
-                                                buoyLocs2000$Latitude)))
-  filter(distGeo(stormCoords, c(Longitude, Latitude)) <= 1e5)
+
+#matrix of long/lat for each buoy (first col is long, second col is lat)
+buoyLongLat <- cbind(buoyLocs2000$Longitude, buoyLocs2000$Latitude)
+
+#vector of distances from buoys to stormCoords
+distanceForEachBuoy<-apply(buoyLongLat, 1,computeDistanceTo) #1 computes by row
+
+
+
 
 
 
