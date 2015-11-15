@@ -19,11 +19,23 @@ Note:
 -we would also want to pull out the variable we want   
 -we would want to set up a naming convention for all the buoy datasets  
 
+
+```{r}
+
+
+require(lubridate)
+require(dplyr)
+require(tidyr)
+
+```
+
+
+
 ```{r}
 #make a loop to pull in all buoy data for a set of buoys
-
-buoyNumber <- c(32487,41024)
-buoyYear <- c(2009,2014)
+#41012h2004
+buoyNumber <- c( 41012,42007)
+buoyYear <- c(2004,2009)
 setOfBuoys <- vector("list",length(buoyNumber))
 
 dataName <- seq(1,length(buoyNumber), by=1)
@@ -34,7 +46,7 @@ for(j in 1:length(buoyNumber)){
   # call in data with try command in while loop
   i <- 1
   while (i < 2){
-    data <- try(read.table(site,sep="",comment.char=""))
+    data <- try(read.table(site,sep="", fill=TRUE, header=TRUE, comment.char=""))
     if (class(data) == "try-error") {
       next
     } else {
@@ -42,19 +54,30 @@ for(j in 1:length(buoyNumber)){
     }
   }
 
-
-
-  #add names to variables
-  names(data)<-c("year", "month", "day", "hour", "min", "WDIR", "WSPD", "GST","WVHT","DPD", "APD", "MWD", "PRES", "ATMP", "WTMP", "DEWP", "VIS", "TIDE")
+#if buoy data has comment sign (#) in variable names
+if(length(grep("X.",names(data)))>0){
+  #ie names variable X.YY to YY
+  names(data)[grep("X.",names(data))] <-
+    substr(names(data)[grep("X.",names(data))],                                                start=3,nchar(names(data)[grep("X.",names(data))]))
+  #removes row of units
+  data <- data[-1,]
   
-#FOR .TXT THAT HAVE 2 ROWS OF COMMENTED OUT VARIABLE NAMES
-#ADD A CHECK TO SEE IF FIRST COL OF VARIABLE NAMES MATCHES NAMES ASSIGNED
-#WILL ALSO NEED TO REMOVE FIRST 2 COLS BEFORE MAKING NUMERIC
+  #change YY to YYYY, WDIR to WD, PRES to BAR
+  names(data)[grep("YY", names(data))] <- "YYYY"
+  names(data)[grep("WDIR", names(data))] <- "WD"
+  names(data)[grep("PRES", names(data))] <- "BAR"
   
-
+  #remove mm (min col)
+  data <- data[,-grep("mm", names(data))]
+}
+  
+data <- as.data.frame(apply(data[,1:(length(data))], 2, as.numeric))
+  
+#make new variable ymd_hms w lubridate (set all min sec to 00)
+data<-data%>%mutate(ymdday=ymd_hms(paste(YYYY,"-", MM,"-",DD, "-", hh, "-", 00, "-", 00)))
+  
 #make all columns numeric and put in vector
-
-setOfBuoys[[j]]<- as.data.frame(apply(data[,1:length(data)], 2, as.numeric))
+setOfBuoys[[j]]<- as.data.frame(data)
 
 }
 
