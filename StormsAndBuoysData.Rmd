@@ -1,0 +1,149 @@
+---
+title: "Storms and Buoys Data"
+author: "SM"
+date: "11/14/2015"
+output: html_document
+---
+
+Need to compute weighted averages for variables for the set of buoys and add to the finalStorm dataset.
+
+Next step is to loop over all of this to compute weighted averages for each year.
+
+
+```{r, message=FALSE}
+
+require(dplyr)
+require(tidyr)
+require(geosphere)
+require(lubridate)
+
+```
+
+
+```{r}
+#data from http://www.ncdc.noaa.gov/ibtracs/index.php?name=ibtracs-data
+#ftp://eclipse.ncdc.noaa.gov/pub/ibtracs/v03r07/all/csv/year/
+
+
+stormYearsFile <- c("2000.csv","2001.csv","2002.csv","2003.csv","2004.csv","2005.csv","2006.csv","2007.csv","2008.csv","2009.csv","2010.csv","2011.csv","2012.csv","2013.csv","2014.csv", "2015.csv")
+
+allStorms <- vector("list",length(stormYearsFile)) 
+
+#pull in csv files and assign to a list of datasets
+for(i in 1:length(stormYearsFile)){
+  
+  allStorms[[i]] <-read.csv(paste("~/Comp-Stats-Project/storm",stormYearsFile[i], sep=""))
+}
+
+#only keep the first 19 columns
+for(i in 1:length(allStorms)){
+  allStorms[[i]] <- allStorms[[i]][,1:19]
+}
+
+#remove -999 from latitude and longitude
+cleanStorms <- vector("list",length(stormYearsFile))
+
+for(i in 1:length(allStorms)){
+  cleanStorms[[i]] <- allStorms[[i]]%>% 
+    filter(Latitude!=-999) %>% 
+    filter(Longitude!=-999)
+}
+
+#all storms datasets have same order of variables
+checkingStorms <- c()
+for(i in 2:length(cleanStorms)){
+  checkingStorms[i-1] <- sum(names(cleanStorms[[1]]) == 
+                             names(cleanStorms[[i]]))
+}
+
+
+#combine all storm datasets into 1 big dataset
+finalStorms <- cleanStorms[[1]]
+for(i in 2: length(cleanStorms)){
+  finalStorms <- rbind(finalStorms, cleanStorms[[i]])
+}
+```
+
+
+
+
+```{r}
+#for all of 2000
+stormsThatYear<-finalStorms %>% filter(Season==2000)
+
+buoyLocations <- dget("buoyLocsAndYears.txt")
+buoyLocsThatYear <- buoyLocations %>% filter(year2000 == TRUE)
+
+
+
+for(k in 1:nrow(stormsThatYear)){
+  
+  firstRow <- stormsThatYear[k,]
+  
+  stormCoords <- c(firstRow$Longitude, firstRow$Latitude)
+  
+    #function to compute dist from storm coord to buoy (buoy takes long/lat of buoy)
+  computeDistanceTo <- function(buoy){
+    return(distGeo(stormCoords,buoy))
+  }
+  
+  #change 2e7 later
+  buoyDists <- buoyLocsThatYear %>% mutate(distToStorm = 
+             apply(cbind(Longitude, Latitude), 1, computeDistanceTo)) %>%
+    filter(distToStorm <= 2e7) %>% select(BuoyNumber, distToStorm)
+  
+  #buoys
+  buoyNumber <- buoyDists$BuoyNumber
+  buoyYear <- rep(2000,times=length(buoyNumber))
+  setOfBuoys <- vector("list",length(buoyNumber))
+  
+  dataName <- seq(1,length(buoyNumber), by=1)
+  
+  for(j in 1:length(buoyNumber)){
+    site <- paste("http://www.ndbc.noaa.gov/view_text_file.php?filename=", buoyNumber[j], "h", buoyYear[j], ".txt.gz&dir=data/historical/stdmet/", sep ="")
+  
+    # call in data with try command in while loop
+    i <- 1
+    while (i < 2){
+      data <- try(read.table(site,sep="", fill=TRUE, header=TRUE, comment.char=""))
+      if (class(data) == "try-error") {
+        next
+      } else {
+        i <- i + 1
+      }
+    }
+  
+  #if buoy data has comment sign (#) in variable names
+  if(length(grep("X.",names(data)))>0){
+    #ie names variable X.YY to YY
+    names(data)[grep("X.",names(data))] <-
+      substr(names(data)[grep("X.",names(data))],                                                start=3,nchar(names(data)[grep("X.",names(data))]))
+    #removes row of units
+    data <- data[-1,]
+    
+    #change YY to YYYY, WDIR to WD, PRES to BAR
+    names(data)[grep("YY", names(data))] <- "YYYY"
+    names(data)[grep("WDIR", names(data))] <- "WD"
+    names(data)[grep("PRES", names(data))] <- "BAR"
+    
+    #remove mm (min col)
+    data <- data[,-grep("mm", names(data))]
+  }
+    
+  data <- as.data.frame(apply(data[,1:(length(data))], 2, as.numeric))
+    
+  #make new variable ymd_hms w lubridate (set all min sec to 00)
+  data<-data%>%mutate(ymdday=ymd_hms(paste(YYYY,"-", MM,"-",DD, "-", hh, "-", 00, "-", 00)))
+    
+  #make all columns numeric and put in vector
+  setOfBuoys[[j]]<- as.data.frame(data)
+  #right now write over setOfBuoys so only saves setOfBuoys from last row
+  
+  #COMPUTE AVERAGES
+  }
+}
+
+```
+
+
+
