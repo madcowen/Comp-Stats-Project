@@ -9,6 +9,7 @@ output: html_document
 
 require(dplyr)
 require(tidyr)
+require(geosphere)
 ```
 
 
@@ -84,12 +85,16 @@ computeDistanceTo <- function(buoy){
   return(distGeo(stormCoords,buoy))
 }
 
+buoyLocs2000 <- buoyLocations %>% filter(year2000 == TRUE) %>%
+  mutate(distToStorm = 
+           apply(cbind(Longitude, Latitude), 1, computeDistanceTo)) %>%
+  filter(distToStorm <= 2e7) %>% select(BuoyNumber, distToStorm)
 
 #matrix of long/lat for each buoy (first col is long, second col is lat)
-buoyLongLat <- cbind(buoyLocs2000$Longitude, buoyLocs2000$Latitude)
+#buoyLongLat <- cbind(buoyLocs2000$Longitude, buoyLocs2000$Latitude)
 
 #vector of distances from buoys to stormCoords
-distanceForEachBuoy<-apply(buoyLongLat, 1,computeDistanceTo) #1 computes by row
+#distanceForEachBuoy<-apply(buoyLongLat, 1,computeDistanceTo) #1 computes by row
 
 
 
