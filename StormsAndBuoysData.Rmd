@@ -62,23 +62,31 @@ finalStorms <- cleanStorms[[1]]
 for(i in 2: length(cleanStorms)){
   finalStorms <- rbind(finalStorms, cleanStorms[[i]])
 }
+
+#add new column of time in ymd_hms type setupt using parse date time fuction
+finalStorms <- finalStorms %>% mutate(time = parse_date_time(ISO_time, "%m%d%Y %H%M")) %>%
+  filter(year(time) != 1999)
 ```
 
 
 
 
 ```{r}
-#for all of 2000
-stormsThatYear<-finalStorms %>% filter(Season==2000)
 
-buoyLocations <- dget("buoyLocsAndYears.txt")
-buoyLocsThatYear <- buoyLocations %>% filter(year2000 == TRUE)
+
+buoyLocations <- dget("buoyLocsAndYears.txt") 
 
 
 
-for(k in 1:nrow(stormsThatYear)){
+for(k in 1:nrow(finalStorms)){
   
-  firstRow <- stormsThatYear[k,]
+  firstRow <- finalStorms[k,]
+  
+  #col num for year of storm in that row
+  yearColNum <- which(names(buoyLocations)==paste("year", year(firstRow$time), sep=""))
+  
+  buoyLocsThatYear <- buoyLocations %>% filter(buoyLocations[,yearColNum] == TRUE)
+  
   
   stormCoords <- c(firstRow$Longitude, firstRow$Latitude)
   
@@ -94,13 +102,22 @@ for(k in 1:nrow(stormsThatYear)){
   
   #buoys
   buoyNumber <- buoyDists$BuoyNumber
-  buoyYear <- rep(2000,times=length(buoyNumber))
+  buoyYear <- year(firstRow$time)
   setOfBuoys <- vector("list",length(buoyNumber))
   
-  dataName <- seq(1,length(buoyNumber), by=1)
+  #dataName <- seq(1,length(buoyNumber), by=1)
+  
+  
+  
+  
+  matchingBuoys <- as.data.frame(matrix(nrow = 1,ncol =19))
+  names(matchingBuoys) = c("YYYY", "MM", "DD", "hh", "WD", "WSPD", "GST", "WVHT", "DPD", "APD", "MWD", "BAR", "ATMP" ,"WTMP","DEWP" ,"VIS", "TIDE", "ymdday", "BuoyNumber")
+  
+  count <- 0
+  count2 <- 0
   
   for(j in 1:length(buoyNumber)){
-    site <- paste("http://www.ndbc.noaa.gov/view_text_file.php?filename=", buoyNumber[j], "h", buoyYear[j], ".txt.gz&dir=data/historical/stdmet/", sep ="")
+    site <- paste("http://www.ndbc.noaa.gov/view_text_file.php?filename=", buoyNumber[j], "h", buoyYear, ".txt.gz&dir=data/historical/stdmet/", sep ="")
   
     # call in data with try command in while loop
     i <- 1
@@ -132,14 +149,55 @@ for(k in 1:nrow(stormsThatYear)){
     
   data <- as.data.frame(apply(data[,1:(length(data))], 2, as.numeric))
     
-  #make new variable ymd_hms w lubridate (set all min sec to 00)
-  data<-data%>%mutate(ymdday=ymd_hms(paste(YYYY,"-", MM,"-",DD, "-", hh, "-", 00, "-", 00)))
-    
-  #make all columns numeric and put in vector
-  setOfBuoys[[j]]<- as.data.frame(data)
-  #right now write over setOfBuoys so only saves setOfBuoys from last row
+  #make new variable ymd_hms w lubridate (set all min 00 and sec to 00)
+  nextRow<-data%>%mutate(ymdday=ymd_hms(paste(YYYY,"-", MM,"-",DD, "-", hh, "-", 00, "-", 00)))%>%
+    filter(ymdday == firstRow$time)
   
-  #COMPUTE AVERAGES
+  if(nrow(nextRow) > 0){
+    nextRow <- as.data.frame(c(nextRow, buoyNumber[j]))
+    names(nextRow)[ncol(nextRow)] <- "BuoyNumber"
+    
+  }
+  
+  
+  if(j==1){
+    matchingBuoys <- nextRow
+  } else {
+    matchingBuoys <- rbind(matchingBuoys, nextRow)
+  }
+  if(nrow(nextRow)==0){
+   # count <- count + 1
+  }
+  #count2 <- count2 + 1
+  
+ # print(nextRow)
+ # print(count2)
+ # print(count)
+
+  
+  }
+  
+  matchingBuoys <- matchingBuoys %>% mutate(BuoyNumber = as.character(BuoyNumber))%>%left_join(buoyDists, by = "BuoyNumber")
+  
+  #need to fix averaging to deal w repeated rows or repeated parts of row ie 9 and 10 in this example
+  
+  #need to figure out what to do w 999 and 99 as missing data
+  weightedByDistance <- function(x){
+    return(weighted.mean(x, w= 1/(matchingBuoys$distToStorm), na.rm = TRUE))
+  }
+  
+  
+  meansForRow <- apply(matchingBuoys[,c(5:17)], 2, weightedByDistance)
+  if(sum(meansForRow, na.rm=TRUE) > 0){
+    meansForRow <- c(meansForRow, k)
+    names(meansForRow)[length(meansForRow)] <- "rowNum"
+    meansForRow <- as.data.frame(t(as.matrix(meansForRow)))
+      if(k == 1){
+      weightedMeans <- meansForRow
+    } else {
+      weightedMeans <- rbind(weightedMeans, 
+                           meansForRow)
+    }
   }
 }
 
