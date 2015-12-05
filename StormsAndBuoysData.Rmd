@@ -72,6 +72,9 @@ for(i in 2: length(cleanStorms)){
 #add new column of time in ymd_hms type setupt using parse date time fuction
 finalStorms <- finalStorms %>% mutate(time = parse_date_time(ISO_time, "%m%d%Y %H%M")) %>%
   filter(year(time) != 1999) # dont want storms in 2000 season that start in 1999
+
+dput(finalStorms, "finalStorms.txt")
+
 ```
 
 
