@@ -73,7 +73,7 @@ $bias\equiv -$ threshold
 
 $output=\{^{0\text{ } if\text{ }  w\cdot x \text{ }  + \text{ } b\text{ }  \le\text{ }  0}_{1\text{ } if\text{ } w\cdot x \text{ }  + \text{ } b\text{ }  > \text{ }  0}$
 
--when bias is positive, large, "easier" to get output of 1
+-when bias is positive, large, "easier" to get output of 1  
 -when bias negative, "harder" to get 1
 
 -perceptrons can compute basic logical functions
@@ -97,7 +97,8 @@ Neural Networks- sigmoid neuron
 ========================================================
 
 differences:  
--inputs $(x_1, x_2, x_3)$ continuous b/w 0, 1 -output not 0,1
+-inputs $(x_1, x_2, x_3)$ continuous b/w 0, 1   
+-output not 0,1
 $ouput = \sigma(w\cdot x + b)$
 
 $\sigma$ sigmoid function  
@@ -107,7 +108,6 @@ $ouput = \frac{1}{1 + \exp{(-\Sigma_j{ w_jx_j-b})}}$
 
 $z \equiv w\cdot x + b$
 when z is large, positive, exponent ~ 0, $\sigma(z) \approx 1$
-
 when z large, negative approx 0  
 -similar to perceptron when z large  
 http://neuralnetworksanddeeplearning.com/chap1.html
@@ -130,3 +130,31 @@ Neural Networks- sigmoid function
 $\Delta output \approx \Sigma_j{\frac{\partial output}{\partial w_j} \Delta w_j + \frac{\partial output}{\partial b} \Delta b}$  
 -change in output a linear function of change in weights and bias  
 http://neuralnetworksanddeeplearning.com/chap1.html
+
+Neural Networks- multilayer perceptrons
+========================================================
+
+![multilayer network](MLP.PNG)
+
+-made up of sigmoid neurons  
+-hidden layer: not input not output  
+-we have discussed *feedforward* neural networks (no loops)  
+
+http://neuralnetworksanddeeplearning.com/chap1.html
+
+Neural Networks- handwriting example
+========================================================
+
+![](handwriting1.PNG)
+
+
+
+Neural Networks- handwriting example cont
+========================================================
+
+-inputs: handwritten digit, each input $(x)$ is a 28x28 vector (vector in pixels)  
+-desired/ true outputs: 10 dim vector, ie 6 is  $y(x) = (0,0,0,0,0,0,1,0,0,0)^T$  
+-use *cost function*:  $C(w,b) \equiv \frac{1}{2n} \sum \limits_{x} || y(x) -a ||^2$  
+$w$ weights; $b$ biases; $n$ # training inputs; $a$ predicted outputs  
+-want to minimize cost
+
