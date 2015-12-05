@@ -97,7 +97,7 @@ weightedMeans <- c()
 
 #loops over every row in stormsNorthAtl dataset
 #nrow(stormsNorthAtl)
-for(k in 1:nrow(stormsNorthAtl)){
+for(k in 2513:2568){
   isMatchingBuoysNew = FALSE
   
   firstRow <- stormsNorthAtl[k,]
@@ -159,6 +159,10 @@ for(k in 1:nrow(stormsNorthAtl)){
       names(data)[grep("YY", names(data))] <- "YYYY"
       names(data)[grep("WDIR", names(data))] <- "WD"
       names(data)[grep("PRES", names(data))] <- "BAR"
+      
+      #remove mm (min col)
+      data <- data[,-grep("mm", names(data))]
+    } else if(buoyYear>2004){
       
       #remove mm (min col)
       data <- data[,-grep("mm", names(data))]
