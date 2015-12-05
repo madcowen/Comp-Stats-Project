@@ -1,0 +1,50 @@
+---
+title: "Untitled"
+author: "Maddi Cowen, Ciaran Evans, Samantha Morrison"
+date: "12/5/2015"
+output: html_document
+---
+```{r}
+buoyLocationsFixed<-dget("buoyLocsAndYears.txt")
+
+
+isABuoy <- c()
+#1:(nrow(buoyLocationsFixed))
+for(k in 1:(nrow(buoyLocationsFixed))){
+  
+  notFoundDataYet <- TRUE
+  
+  for(j in 4:(ncol(buoyLocationsFixed))){
+    buoyYear <- 1996 + j
+    site <- paste("http://www.ndbc.noaa.gov/view_text_file.php?filename=",
+                  buoyLocationsFixed$BuoyNumber[k],
+                  "h",buoyYear, ".txt.gz&dir=data/historical/stdmet/", sep ="")
+        
+        if(notFoundDataYet){  
+          # call in buoy data with try command in while loop
+          i <- 1
+          
+          # count the number of times we try and fail to get the data
+          countError <- 0
+          while (i < 2 & countError < 10){
+            data <- try(read.table(site,sep="", fill=TRUE, header=TRUE, comment.char=""),
+                        silent=TRUE)
+            if (class(data) == "try-error") {
+              countError = countError + 1
+              next
+            } else {
+              i <- i + 1
+            }
+          }
+          
+          if(class(data) != "try-error"){
+            isABuoy <- c(isABuoy, buoyLocationsFixed$BuoyNumber[k])
+            notFoundDataYet <- FALSE
+          }
+        
+        }
+  }
+  
+}
+
+```
