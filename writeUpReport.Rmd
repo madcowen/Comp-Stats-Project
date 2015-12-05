@@ -1,0 +1,7 @@
+---
+title: "Math 154 Write Up"
+author: "Maddi Cowen, Ciaran Evans, Samantha Morrison"
+date: "12/4/2015"
+output: html_document
+---
+
