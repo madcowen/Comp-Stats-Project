@@ -75,6 +75,14 @@ finalStorms <- finalStorms %>% mutate(time = parse_date_time(ISO_time, "%m%d%Y %
 
 dput(finalStorms, "finalStorms.txt")
 
+stormsNorthAtl <- finalStorms %>% 
+  select(Basin, Serial_Num, Latitude, Longitude) %>%
+  mutate(BasinChar = as.character(Basin))%>% filter(BasinChar == " NA") %>%
+  mutate(Serial_NumChar = as.character(Serial_Num)) %>% 
+  filter(Serial_NumChar %in% names(which(table(Serial_NumChar) > 1)))
+
+dput(stormsNorthAtl, "stormsNorthAtl.txt")
+
 ```
 
 
