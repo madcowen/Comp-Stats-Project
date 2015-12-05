@@ -76,7 +76,7 @@ finalStorms <- finalStorms %>% mutate(time = parse_date_time(ISO_time, "%m%d%Y %
 dput(finalStorms, "finalStorms.txt")
 
 stormsNorthAtl <- finalStorms %>% 
-  select(Basin, Serial_Num, Latitude, Longitude) %>%
+  select(Basin, Serial_Num, Latitude, Longitude, time) %>%
   mutate(BasinChar = as.character(Basin))%>% filter(BasinChar == " NA") %>%
   mutate(Serial_NumChar = as.character(Serial_Num)) %>% 
   filter(Serial_NumChar %in% names(which(table(Serial_NumChar) > 1)))
@@ -93,11 +93,11 @@ This section below finds all the buoys for a row of storms data and calculates t
 #table of buoy num, lat, long, and TRUE/FALSE if have data in years 2000 to 2015
 buoyLocations <- dget("buoyLocsAndYears.txt") 
 
-#loops over every row in finalStorms dataset
-#nrow(finalStorms)
-for(k in 1:nrow(finalStorms)){
+#loops over every row in stormsNorthAtl dataset
+#nrow(stormsNorthAtl)
+for(k in 1:nrow(stormsNorthAtl)){
   
-  firstRow <- finalStorms[k,]
+  firstRow <- stormsNorthAtl[k,]
   
   #column num that corresponds to variable yearX in buoyLocations file
   #yearX is the year of the storm for this row
@@ -117,98 +117,111 @@ for(k in 1:nrow(finalStorms)){
   #finds buoys within 2e7 distance to storm and get dataset of those buoys and their dists
   buoyDists <- buoyLocsThatYear %>% mutate(distToStorm = 
              apply(cbind(Longitude, Latitude), 1, computeDistanceTo)) %>%
-    filter(distToStorm <= 2e7) %>% select(BuoyNumber, distToStorm)
+    filter(distToStorm <= 500000) %>% select(BuoyNumber, distToStorm)
   
 
   buoyNumber <- buoyDists$BuoyNumber
   buoyYear <- year(firstRow$time)
   
-  #dataset of buoys corresponding to storm row and their variables
-  matchingBuoys <- as.data.frame(matrix(nrow = 1,ncol =19))
-  names(matchingBuoys) = c("YYYY", "MM", "DD", "hh", "WD", "WSPD", "GST", "WVHT", "DPD", "APD", "MWD", "BAR", "ATMP" ,"WTMP","DEWP" ,"VIS", "TIDE", "ymdday", "BuoyNumber")
-  
-  #loops over buoys to pull in buoys and make dataset of buoys and their variables
-  for(j in 1:length(buoyNumber)){
-    site <- paste("http://www.ndbc.noaa.gov/view_text_file.php?filename=", buoyNumber[j], "h", buoyYear, ".txt.gz&dir=data/historical/stdmet/", sep ="")
-  
-    # call in buoy data with try command in while loop
-    i <- 1
-    while (i < 2){
-      data <- try(read.table(site,sep="", fill=TRUE, header=TRUE, comment.char=""))
-      if (class(data) == "try-error") {
-        next
-      } else {
-        i <- i + 1
+  if(length(buoyNumber)!= 0){
+    
+    #dataset of buoys corresponding to storm row and their variables
+    matchingBuoys <- as.data.frame(matrix(nrow = 1,ncol =19))
+    names(matchingBuoys) = c("YYYY", "MM", "DD", "hh", "WD", "WSPD", "GST", "WVHT", "DPD", "APD", "MWD", "BAR", "ATMP" ,"WTMP","DEWP" ,"VIS", "TIDE", "ymdday", "BuoyNumber")
+    
+    #loops over buoys to pull in buoys and make dataset of buoys and their variables
+    for(j in 1:length(buoyNumber)){
+      site <- paste("http://www.ndbc.noaa.gov/view_text_file.php?filename=", buoyNumber[j], "h", buoyYear, ".txt.gz&dir=data/historical/stdmet/", sep ="")
+    
+      # call in buoy data with try command in while loop
+      i <- 1
+      while (i < 2){
+        data <- try(read.table(site,sep="", fill=TRUE, header=TRUE, comment.char=""))
+        if (class(data) == "try-error") {
+          next
+        } else {
+          i <- i + 1
+        }
       }
+    
+    #clean up if buoy data .txt has comment sign (#) -- 2007 and later
+    if(length(grep("X.",names(data)))>0){
+      #ie names variable X.YY to YY
+      names(data)[grep("X.",names(data))] <-
+        substr(names(data)[grep("X.",names(data))],                                                start=3,nchar(names(data)[grep("X.",names(data))]))
+      #removes row of units
+      data <- data[-1,]
+      
+      #change YY to YYYY, WDIR to WD, PRES to BAR
+      names(data)[grep("YY", names(data))] <- "YYYY"
+      names(data)[grep("WDIR", names(data))] <- "WD"
+      names(data)[grep("PRES", names(data))] <- "BAR"
+      
+      #remove mm (min col)
+      data <- data[,-grep("mm", names(data))]
     }
-  
-  #clean up if buoy data .txt has comment sign (#) -- 2007 and later
-  if(length(grep("X.",names(data)))>0){
-    #ie names variable X.YY to YY
-    names(data)[grep("X.",names(data))] <-
-      substr(names(data)[grep("X.",names(data))],                                                start=3,nchar(names(data)[grep("X.",names(data))]))
-    #removes row of units
-    data <- data[-1,]
+      
+    #make everything numeric
+    data <- as.data.frame(apply(data[,1:(length(data))], 2, as.numeric))
+      
+    #make new variable ymd_hms w lubridate (set all min 00 and sec to 00)
+    nextRow<-data%>%mutate(ymdday=ymd_hms(paste(YYYY,"-", MM,"-",DD, "-", hh, "-", 00, "-", 00)))%>%
+      filter(ymdday == firstRow$time) #only want data at time matching storm
     
-    #change YY to YYYY, WDIR to WD, PRES to BAR
-    names(data)[grep("YY", names(data))] <- "YYYY"
-    names(data)[grep("WDIR", names(data))] <- "WD"
-    names(data)[grep("PRES", names(data))] <- "BAR"
+    #if buoy data at matching time is not empty, add on buoyNumber 
+    if(nrow(nextRow) > 0){
+      nextRow <- as.data.frame(c(nextRow, buoyNumber[j]))
+      names(nextRow)[ncol(nextRow)] <- "BuoyNumber"
+    }
     
-    #remove mm (min col)
-    data <- data[,-grep("mm", names(data))]
-  }
     
-  #make everything numeric
-  data <- as.data.frame(apply(data[,1:(length(data))], 2, as.numeric))
-    
-  #make new variable ymd_hms w lubridate (set all min 00 and sec to 00)
-  nextRow<-data%>%mutate(ymdday=ymd_hms(paste(YYYY,"-", MM,"-",DD, "-", hh, "-", 00, "-", 00)))%>%
-    filter(ymdday == firstRow$time) #only want data at time matching storm
-  
-  #if buoy data at matching time is not empty, add on buoyNumber 
-  if(nrow(nextRow) > 0){
-    nextRow <- as.data.frame(c(nextRow, buoyNumber[j]))
-    names(nextRow)[ncol(nextRow)] <- "BuoyNumber"
-  }
-  
-  
-  #assign first row to empty matchingBuoys, then rbind on other nextRows sequentially
-  if(j==1){
-    matchingBuoys <- nextRow
-  } else {
-    matchingBuoys <- rbind(matchingBuoys, nextRow)
-  }
- 
-  }
-  
-  #join buoy data for that row with distances
-  matchingBuoys <- matchingBuoys %>% mutate(BuoyNumber = as.character(BuoyNumber))%>%left_join(buoyDists, by = "BuoyNumber")
-  
-  #need to fix averaging to deal w repeated rows or repeated parts of row ie 9 and 10 in this example
-  
-  #need to figure out what to do w 999 and 99 as missing data
-  
-  #function to calculate weighted averages
-  weightedByDistance <- function(x){
-    return(weighted.mean(x, w= 1/(matchingBuoys$distToStorm), na.rm = TRUE))
-  }
-  
-  #calculates weighted avgs of buoy variables for each row
-  meansForRow <- apply(matchingBuoys[,c(5:17)], 2, weightedByDistance)
-  
-  #if weighted avgs not all NaN then add on corresponding storm rowNum
-  if(sum(meansForRow, na.rm=TRUE) > 0){
-    meansForRow <- c(meansForRow, k)
-    names(meansForRow)[length(meansForRow)] <- "rowNum"
-    meansForRow <- as.data.frame(t(as.matrix(meansForRow)))
-    
-      #make a dataframe of weighted means for each buoy variable with correspond storm rowNum
-      if(k == 1){
-      weightedMeans <- meansForRow
+    #assign first row to empty matchingBuoys, then rbind on other nextRows sequentially
+    if(j==1){
+      matchingBuoys <- nextRow
     } else {
-      weightedMeans <- rbind(weightedMeans, 
-                           meansForRow)
+      matchingBuoys <- rbind(matchingBuoys, nextRow)
+    }
+   
+    }
+    
+    #join buoy data for that row with distances
+    matchingBuoys <- matchingBuoys %>% 
+      mutate(BuoyNumber = as.character(BuoyNumber))%>%
+      left_join(buoyDists, by = "BuoyNumber")
+    
+    #converting 999 and 99 to NA
+    matchingBuoys[,c(6:10, 16:17)][matchingBuoys[,c(6:10, 16:17)] == 99] <- NA
+    
+    matchingBuoys[,c(5, 11, 13:15)][matchingBuoys[,c(5, 11, 13:15)] == 999] <- NA
+    
+    
+    # average repeated rows, with na.rm = T
+    matchingBuoys <- matchingBuoys %>% group_by(BuoyNumber) %>%
+      summarize_each(funs(mean(., na.rm=TRUE)))
+    
+    matchingBuoys <- as.data.frame(matchingBuoys)
+    
+    #function to calculate weighted averages
+    weightedByDistance <- function(x){
+      return(weighted.mean(x, w= 1/(matchingBuoys$distToStorm), na.rm = TRUE))
+    }
+    
+    #calculates weighted avgs of buoy variables for each row
+    meansForRow <- apply(matchingBuoys[,c(5:17)], 2, weightedByDistance)
+    
+    #if weighted avgs not all NaN then add on corresponding storm rowNum
+    if(sum(meansForRow, na.rm=TRUE) > 0){
+      meansForRow <- c(meansForRow, k)
+      names(meansForRow)[length(meansForRow)] <- "rowNum"
+      meansForRow <- as.data.frame(t(as.matrix(meansForRow)))
+      
+        #make a dataframe of weighted means for each buoy variable with correspond storm rowNum
+        if(k == 1){
+        weightedMeans <- meansForRow
+      } else {
+        weightedMeans <- rbind(weightedMeans, 
+                             meansForRow)
+      }
     }
   }
 }
