@@ -93,9 +93,12 @@ This section below finds all the buoys for a row of storms data and calculates t
 #table of buoy num, lat, long, and TRUE/FALSE if have data in years 2000 to 2015
 buoyLocations <- dget("buoyLocsAndYears.txt") 
 
+weightedMeans <- c()
+
 #loops over every row in stormsNorthAtl dataset
 #nrow(stormsNorthAtl)
 for(k in 1:nrow(stormsNorthAtl)){
+  isMatchingBuoysNew = FALSE
   
   firstRow <- stormsNorthAtl[k,]
   
@@ -170,9 +173,11 @@ for(k in 1:nrow(stormsNorthAtl)){
     
     #if buoy data at matching time is not empty, add on buoyNumber 
     if(nrow(nextRow) > 0){
+      #this storm row actually has data we want to use
+      isMatchingBuoysNew = TRUE
       nextRow <- as.data.frame(c(nextRow, buoyNumber[j]))
       names(nextRow)[ncol(nextRow)] <- "BuoyNumber"
-    }
+    
     
     
     #assign first row to empty matchingBuoys, then rbind on other nextRows sequentially
@@ -181,9 +186,13 @@ for(k in 1:nrow(stormsNorthAtl)){
     } else {
       matchingBuoys <- rbind(matchingBuoys, nextRow)
     }
+      
+    }
    
     }
     
+    
+    if(isMatchingBuoysNew){
     #join buoy data for that row with distances
     matchingBuoys <- matchingBuoys %>% 
       mutate(BuoyNumber = as.character(BuoyNumber))%>%
@@ -207,7 +216,7 @@ for(k in 1:nrow(stormsNorthAtl)){
     }
     
     #calculates weighted avgs of buoy variables for each row
-    meansForRow <- apply(matchingBuoys[,c(5:17)], 2, weightedByDistance)
+    meansForRow <- apply(matchingBuoys[,c(6:18)], 2, weightedByDistance)
     
     #if weighted avgs not all NaN then add on corresponding storm rowNum
     if(sum(meansForRow, na.rm=TRUE) > 0){
@@ -216,14 +225,16 @@ for(k in 1:nrow(stormsNorthAtl)){
       meansForRow <- as.data.frame(t(as.matrix(meansForRow)))
       
         #make a dataframe of weighted means for each buoy variable with correspond storm rowNum
-        if(k == 1){
+        if(length(weightedMeans)){
         weightedMeans <- meansForRow
+        
       } else {
         weightedMeans <- rbind(weightedMeans, 
                              meansForRow)
       }
     }
-  }
+    }
+    }
 }
 
 ```
