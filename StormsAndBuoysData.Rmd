@@ -225,7 +225,7 @@ for(k in 1:nrow(stormsNorthAtl)){
       meansForRow <- as.data.frame(t(as.matrix(meansForRow)))
       
         #make a dataframe of weighted means for each buoy variable with correspond storm rowNum
-        if(length(weightedMeans)){
+        if(length(weightedMeans) == 0){
         weightedMeans <- meansForRow
         
       } else {
@@ -239,7 +239,21 @@ for(k in 1:nrow(stormsNorthAtl)){
 
 ```
 
+```{r}
+#run 1
+#when stopped k was 2562 dim(weightedMeans) was 738 14
+#got errors see below (seems couldn't pull in some buoy data, bad pages for those?)
 
+# preliminary weighted means
+dput(weightedMeans, "prelimWeightedMeans.txt")
+prelimWeightedMeans <- dget("prelimWeightedMeans.txt")
+```
+
+Error messages: run 1
+In addition: Warning message:
+In file(file, "rt") : unable to connect to 'www.ndbc.noaa.gov' on port 80.
+Error in match.names(clabs, names(xi)) : 
+  names do not match previous names
 PROBLEMS TO ADDRESS:
 1. need to change 2e7 later to distance we actually want buoys to be from storm
 2.  need to fix averaging to deal w repeated rows or repeated parts of row ie 9 and 10 in this example read in 
