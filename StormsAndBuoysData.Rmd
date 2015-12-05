@@ -97,7 +97,7 @@ weightedMeans <- c()
 
 #loops over every row in stormsNorthAtl dataset
 #nrow(stormsNorthAtl)
-for(k in 2513:2568){
+for(k in 2570:2571){
   isMatchingBuoysNew = FALSE
   
   firstRow <- stormsNorthAtl[k,]
@@ -138,59 +138,71 @@ for(k in 2513:2568){
     
       # call in buoy data with try command in while loop
       i <- 1
-      while (i < 2){
-        data <- try(read.table(site,sep="", fill=TRUE, header=TRUE, comment.char=""))
+      
+      # count the number of times we try and fail to get the data
+      countError <- 0
+      while (i < 2 & countError < 10){
+        data <- try(read.table(site,sep="", fill=TRUE, header=TRUE, comment.char=""), silent=TRUE)
         if (class(data) == "try-error") {
+          countError = countError + 1
           next
         } else {
           i <- i + 1
         }
       }
     
-    #clean up if buoy data .txt has comment sign (#) -- 2007 and later
-    if(length(grep("X.",names(data)))>0){
-      #ie names variable X.YY to YY
-      names(data)[grep("X.",names(data))] <-
-        substr(names(data)[grep("X.",names(data))],                                                start=3,nchar(names(data)[grep("X.",names(data))]))
-      #removes row of units
-      data <- data[-1,]
-      
-      #change YY to YYYY, WDIR to WD, PRES to BAR
-      names(data)[grep("YY", names(data))] <- "YYYY"
-      names(data)[grep("WDIR", names(data))] <- "WD"
-      names(data)[grep("PRES", names(data))] <- "BAR"
-      
-      #remove mm (min col)
-      data <- data[,-grep("mm", names(data))]
-    } else if(buoyYear>2004){
-      
-      #remove mm (min col)
-      data <- data[,-grep("mm", names(data))]
-    }
-      
-    #make everything numeric
-    data <- as.data.frame(apply(data[,1:(length(data))], 2, as.numeric))
-      
-    #make new variable ymd_hms w lubridate (set all min 00 and sec to 00)
-    nextRow<-data%>%mutate(ymdday=ymd_hms(paste(YYYY,"-", MM,"-",DD, "-", hh, "-", 00, "-", 00)))%>%
-      filter(ymdday == firstRow$time) #only want data at time matching storm
+      # we try to get the data a number of times; if we fail every time,
+      #  the data will be of class try-error.  We only proceed if it is not of 
+      #  this class; if this if statement is not satisfied, we get to the end of
+      #  the loop over the buoy numbers and just move on to the next buoy number
+    if(class(data) != "try-error"){
     
-    #if buoy data at matching time is not empty, add on buoyNumber 
-    if(nrow(nextRow) > 0){
-      #this storm row actually has data we want to use
-      isMatchingBuoysNew = TRUE
-      nextRow <- as.data.frame(c(nextRow, buoyNumber[j]))
-      names(nextRow)[ncol(nextRow)] <- "BuoyNumber"
-    
-    
-    
-    #assign first row to empty matchingBuoys, then rbind on other nextRows sequentially
-    if(j==1){
-      matchingBuoys <- nextRow
-    } else {
-      matchingBuoys <- rbind(matchingBuoys, nextRow)
-    }
+      #clean up if buoy data .txt has comment sign (#) -- 2007 and later
+      if(length(grep("X.",names(data)))>0){
+        #ie names variable X.YY to YY
+        names(data)[grep("X.",names(data))] <-
+          substr(names(data)[grep("X.",names(data))],                                                start=3,nchar(names(data)[grep("X.",names(data))]))
+        #removes row of units
+        data <- data[-1,]
+        
+        #change YY to YYYY, WDIR to WD, PRES to BAR
+        names(data)[grep("YY", names(data))] <- "YYYY"
+        names(data)[grep("WDIR", names(data))] <- "WD"
+        names(data)[grep("PRES", names(data))] <- "BAR"
+        
+        #remove mm (min col)
+        data <- data[,-grep("mm", names(data))]
+      } else if(buoyYear>2004){
+        
+        #remove mm (min col)
+        data <- data[,-grep("mm", names(data))]
+      }
+        
+      #make everything numeric
+      data <- as.data.frame(apply(data[,1:(length(data))], 2, as.numeric))
+        
+      #make new variable ymd_hms w lubridate (set all min 00 and sec to 00)
+      nextRow<-data%>%mutate(ymdday=ymd_hms(paste(YYYY,"-", MM,"-",DD, "-", hh, "-", 00, "-", 00)))%>%
+        filter(ymdday == firstRow$time) #only want data at time matching storm
       
+      #if buoy data at matching time is not empty, add on buoyNumber 
+      if(nrow(nextRow) > 0){
+        #this storm row actually has data we want to use
+        isMatchingBuoysNew = TRUE
+        nextRow <- as.data.frame(c(nextRow, buoyNumber[j]))
+        names(nextRow)[ncol(nextRow)] <- "BuoyNumber"
+      
+      
+      
+      #assign first row to empty matchingBuoys, then rbind on other nextRows sequentially
+      if(j==1){
+        matchingBuoys <- nextRow
+      } else {
+        matchingBuoys <- rbind(matchingBuoys, nextRow)
+      }
+        
+      }
+    
     }
    
     }
