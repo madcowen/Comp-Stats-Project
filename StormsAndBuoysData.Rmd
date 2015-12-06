@@ -91,13 +91,13 @@ This section below finds all the buoys for a row of storms data and calculates t
 ```{r}
 
 #table of buoy num, lat, long, and TRUE/FALSE if have data in years 2000 to 2015
-buoyLocations <- dget("buoyLocsAndYears.txt") 
+buoyLocations <- dget("buoyLocationsFixed.txt") 
 
 weightedMeans <- c()
 
 #loops over every row in stormsNorthAtl dataset
 #nrow(stormsNorthAtl)
-for(k in 2570:2571){
+for(k in 1:nrow(stormsNorthAtl)){
   isMatchingBuoysNew = FALSE
   
   firstRow <- stormsNorthAtl[k,]
