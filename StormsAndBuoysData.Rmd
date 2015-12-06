@@ -266,19 +266,17 @@ for(k in 1:nrow(stormsNorthAtl)){
 ```
 
 ```{r}
-
+# did get 41 warning messages, but were not able to see what they were
 dput(weightedMeans, "completeWeightedMeans.txt")
-
+completeWeightedMeans <- dget("completeWeightedMeans.txt")
 ```
 
-Error messages: run 1
+Error messages: run 1 (prelimWeightedMeans)
 In addition: Warning message:
 In file(file, "rt") : unable to connect to 'www.ndbc.noaa.gov' on port 80.
 Error in match.names(clabs, names(xi)) : 
   names do not match previous names
+  
 PROBLEMS TO ADDRESS:
-1. need to change 2e7 later to distance we actually want buoys to be from storm
-2.  need to fix averaging to deal w repeated rows or repeated parts of row ie 9 and 10 in this example read in 
-3. need to figure out what to do w 999 and 99 as missing data (convert to NA that is removed in rm.na)?
-4. Check over formatting -- seems like loops are not indented properly 
+1. Check over formatting -- seems like loops are not indented properly 
 
