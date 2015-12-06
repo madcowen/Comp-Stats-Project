@@ -3,7 +3,15 @@ title: "Untitled"
 author: "Maddi Cowen, Ciaran Evans, Samantha Morrison"
 date: "12/5/2015"
 output: html_document
+
 ---
+```{r, message=FALSE}
+
+require(dplyr)
+
+
+```
+
 ```{r}
 buoyLocationsFixed<-dget("buoyLocsAndYears.txt")
 
@@ -46,5 +54,20 @@ for(k in 1:(nrow(buoyLocationsFixed))){
   }
   
 }
+
+
+
+```
+
+```{r}
+
+#save so we don't lose it
+dput(isABuoy, "isABuoy.txt")
+
+
+buoyLocationsFixed <- buoyLocationsFixed %>% filter(BuoyNumber %in% isABuoy)
+
+dput(buoyLocationsFixed, "buoyLocationsFixed.txt")
+
 
 ```
