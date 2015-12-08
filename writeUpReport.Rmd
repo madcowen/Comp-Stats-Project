@@ -21,6 +21,55 @@ Clicking on this link takes us to a page ( [http://www.ndbc.noaa.gov/station_his
 
 ![](buoy41046StandardMeteorological.JPG)
 
-So buoy 41046 has historical meteorological data for 2007 - 2014, which is great for us! But to get it, we would have to click on each link for each year, which takes us to a text file.  Here's what the 2007 data ( [http://www.ndbc.noaa.gov/view_text_file.php?filename=41046h2007.txt.gz&dir=data/historical/stdmet/](http://www.ndbc.noaa.gov/view_text_file.php?filename=41046h2007.txt.gz&dir=data/historical/stdmet/) ) looks like:
+So buoy 41046 has historical meteorological data for 2007 - 2014, which is great for us!  Here's what the 2007 data ( [http://www.ndbc.noaa.gov/view_text_file.php?filename=41046h2007.txt.gz&dir=data/historical/stdmet/](http://www.ndbc.noaa.gov/view_text_file.php?filename=41046h2007.txt.gz&dir=data/historical/stdmet/) ) looks like:
 
 ![](buoy41046_2007data.JPG)
+
+
+But to get it, we would have to click on each link for each year, which takes us to a text file.  Since there are many buoys and many different years, getting all the data manually would be tedious and unproductive.  Instead, we will write some code to scrape it from the NOAA website.  First, we take all of the buoy numbers from [http://www.ndbc.noaa.gov/to_station.shtml](http://www.ndbc.noaa.gov/to_station.shtml). The source for the webpage is in HTML; each hyperlink has a specific tag, and since each buoy number is a hyperlink on the page we will grab all of the hyperlinks.  The package XML allows us to do this; the htmlTreeParse() function converts the HTML content of the webpage to a useful structure, and then xpathApply() is used to select all the hyperlinks by selecting for the hyperlink tags.
+
+```{r, eval=FALSE}
+
+# We'll use the XML package to get info from web pages
+require(XML)
+
+# Read and parse HTML file
+buoylist.html = htmlTreeParse('http://www.ndbc.noaa.gov/to_station.shtml',
+                         useInternal = TRUE)
+# make a vector of each hyperlink
+buoylist.text = unlist(xpathApply(buoylist.html, "//a/@href"))
+
+```
+
+We now have a vector containing each hyperlink.  To get all the ones corresponding to buoys, we use the grep() function from the base package to find matches to the string pattern "station=" in the vector. Having found the indices of strings that contain the pattern "station=", we pull out the station number from each of those strings by selecting the substring of length 5 that start immediately after the "=" sign:
+
+```{r, eval=FALSE}
+
+# indices of hyperlinks that correspond to NOAA observation stations
+hrefIndices <- grep("station=", buoylist.text)
+
+# create vector to hold the buoy numbers
+buoyNums <- c()
+
+for(i in 1:length(hrefIndices)){
+  href <- hrefIndices[i]  # look at each buoy index in turn
+  refString <- buoylist.text[href]  # look at hyperlink at that index
+  # substring starts after '=' sign
+  startind <- unlist(gregexpr('=',refString)) + 1  
+  # take substring of length 5, starting right after '=' sign
+  buoyNums[i] <- substr(refString, startind, startind + 4)
+}
+
+```
+
+Why do we only look at strings of lengths five? It turns out that's how long a buoy ID number is, according to the NOAA documentation at [http://www.ndbc.noaa.gov/staid.shtml](http://www.ndbc.noaa.gov/staid.shtml) :
+
+![](buoyIDInfo.JPG)
+
+And in fact, as we are only interested in buoys in the North Atlantic, this documentation tells us that we need only consider those buoy numbers beginning with 41, 42, or 44, so let's select just those values from the vector of buoy numbers we just created:
+
+```{r, eval=FALSE}
+
+buoyNums <- buoyNums[substr(buoyNums, 1,2) %in% c("41", "42", "44")]
+
+```
