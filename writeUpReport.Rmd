@@ -187,7 +187,7 @@ Finally, we can store the data if we want, using the dput() function.
 ```{r, eval=FALSE}
 
 # save the data frame as a text file
-dput(buoyLocsAndYears, "buoyLocsAndYears.txt")
+#dput(buoyLocsAndYears, "buoyLocsAndYears.txt")
 
 # If you want to access it again, use this
 # dget("buoyLocsAndYears.txt")
@@ -211,7 +211,8 @@ require(dplyr)
 
 # final matrix of buoy locations and years of data 
 #  will be called buoyLocationsFixed
-buoyLocationsFixed<-dget("buoyLocsAndYears.txt")
+#buoyLocationsFixed<-dget("buoyLocsAndYears.txt")
+buoyLocationsFixed <- buoyLocsAndYears
 
 # numeric vector to hold the buoy numbers we want to keep
 isABuoy <- c()
@@ -279,11 +280,11 @@ Now we'll store the list of buoy numbers that we want to keep, then use the filt
 ```{r, eval=FALSE}
 
 #save so we don't lose it
-dput(isABuoy, "isABuoy.txt")
+#dput(isABuoy, "isABuoy.txt")
 
 buoyLocationsFixed <- buoyLocationsFixed %>% filter(BuoyNumber %in% isABuoy)
 
-dput(buoyLocationsFixed, "buoyLocationsFixed.txt")
+#dput(buoyLocationsFixed, "buoyLocationsFixed.txt")
 
 
 ```
