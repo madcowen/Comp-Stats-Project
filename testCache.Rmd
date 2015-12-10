@@ -1,0 +1,14 @@
+---
+title: "Test Cache"
+author: "Ciaran Evans"
+date: "12/9/2015"
+output: html_document
+---
+
+We test the "cache" functionality of RMarkdown chunks.
+
+```{r, cache=TRUE}
+
+rnorm(1)
+
+```
