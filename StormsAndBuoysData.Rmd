@@ -90,6 +90,8 @@ This section below finds all the buoys for a row of storms data and calculates t
 
 ```{r}
 
+Sys.time()
+
 #table of buoy num, lat, long, and TRUE/FALSE if have data in years 2000 to 2015
 buoyLocations <- dget("buoyLocationsFixed.txt") 
 
@@ -253,6 +255,8 @@ for(k in 1:nrow(stormsNorthAtl)){
     }
 }
 
+Sys.time()
+
 ```
 
 ```{r}
@@ -267,15 +271,27 @@ for(k in 1:nrow(stormsNorthAtl)){
 
 ```{r}
 # did get 41 warning messages, but were not able to see what they were
-dput(weightedMeans, "completeWeightedMeans.txt")
+#dput(weightedMeans, "completeWeightedMeans.txt")
 completeWeightedMeans <- dget("completeWeightedMeans.txt")
+
 ```
 
-Error messages: run 1 (prelimWeightedMeans)
-In addition: Warning message:
-In file(file, "rt") : unable to connect to 'www.ndbc.noaa.gov' on port 80.
-Error in match.names(clabs, names(xi)) : 
-  names do not match previous names
+
+```{r}
+# ran full loop again, only got 2 warning messages (In file(file, "rt") :
+#unable to connect to 'www.ndbc.noaa.gov' on port 80.)
+#dput(weightedMeans, "completeWeightedMeans2.txt")
+completeWeightedMeans2 <- dget("completeWeightedMeans2.txt")
+
+#2 datasets slightly different
+all.equal(completeWeightedMeans, completeWeightedMeans2)
+
+
+#system print out of times
+#"2015-12-06 11:04:27 PST"  #start of loop for StormsAndBuoysData
+#"2015-12-06 23:01:57 PST"
+```
+
   
 PROBLEMS TO ADDRESS:
 1. Check over formatting -- seems like loops are not indented properly 
