@@ -1,0 +1,79 @@
+---
+title: "Untitled"
+author: "Maddi Cowen, Ciaran Evans, Samantha Morrison"
+date: "12/10/2015"
+output: html_document
+---
+
+
+```{r, message=FALSE}
+# all the packages needed for the data scraping and cleaning
+require(dplyr)
+require(tidyr)
+require(geosphere) # to calc distances between latitude/longitude of points
+require(lubridate) # standardize dates and times
+require(XML) # scrape buoy lat/long data from web
+
+```
+
+
+```{r, cache = TRUE}
+
+# data from http://www.ncdc.noaa.gov/ibtracs/index.php?name=ibtracs-data
+# ftp://eclipse.ncdc.noaa.gov/pub/ibtracs/v03r07/all/csv/year/
+
+# save portion of name of storm files that differed between files
+stormYearsFile <- c("2000.csv","2001.csv","2002.csv","2003.csv","2004.csv","2005.csv","2006.csv","2007.csv","2008.csv","2009.csv","2010.csv","2011.csv","2012.csv","2013.csv","2014.csv", "2015.csv")
+
+# create a list to store these storm datasets in separately
+allStorms <- vector("list",length(stormYearsFile)) 
+
+# pull in csv files and assign each dataset to a different section of the list
+for(i in 1:length(stormYearsFile)){
+  allStorms[[i]] <-read.csv(paste("~/Comp-Stats-Project/storm",stormYearsFile[i], sep=""))
+}
+
+# only keep the first 19 variables (columns)
+for(i in 1:length(allStorms)){
+  allStorms[[i]] <- allStorms[[i]][,1:19]
+}
+
+# store cleaner data in new list of datasets
+cleanStorms <- vector("list",length(stormYearsFile))
+
+# remove all rows that have -999 (missing data) as latitude or longitude
+for(i in 1:length(allStorms)){
+  cleanStorms[[i]] <- allStorms[[i]]%>% 
+    filter(Latitude!=-999) %>% 
+    filter(Longitude!=-999)
+}
+
+# check all storms datasets have same order of variables
+checkingStorms <- c()
+for(i in 2:length(cleanStorms)){
+  checkingStorms[i-1] <- sum(names(cleanStorms[[1]]) == 
+                             names(cleanStorms[[i]]))
+}
+
+
+# combine all storm datasets into 1 big dataset
+finalStorms <- cleanStorms[[1]]
+for(i in 2: length(cleanStorms)){
+  finalStorms <- rbind(finalStorms, cleanStorms[[i]])
+}
+
+#add new column of time in ymd_hms type setup using parse date time fuction
+finalStorms <- finalStorms %>% mutate(time = parse_date_time(ISO_time, "%m%d%Y %H%M")) %>%
+  filter(year(time) != 1999) # dont want storms in 2000 season that start in 1999
+
+# only save variables we want and choose storms in Basin NA (north atlantic)
+stormsNorthAtl <- finalStorms %>% 
+  select(Basin, Serial_Num, Latitude, Longitude, time, Wind.WMO., Wind.WMO..Percentile) %>%
+  mutate(BasinChar = as.character(Basin))%>% filter(BasinChar == " NA") 
+
+names(stormsNorthAtl)[6] <- "Wind_WMO"  # in knots
+names(stormsNorthAtl)[7] <- "Wind_WMO_Perc" # in percentiles
+
+head(stormsNorthAtl,3)
+
+```
