@@ -11,21 +11,21 @@ require(dplyr)
 
 ```
 
+
 ```{r}
 newmap <- getMap(resolution = "low")
 
-buoyLocations <-dget("buoyLocsAndYears.txt")
-finalStorms <- dget("finalStorms.txt")
+buoyLocations <-dget("buoyLocationsFixed.txt")
+stormsToMap <- dget("stormsNorthAtl.txt")
+weightedResults <- dget("completeWeightedMeans2.txt")
 
-stormsToMapNorthA<-finalStorms %>% select(Basin, Serial_Num, Latitude, Longitude) %>%
-  mutate(BasinChar = as.character(Basin))%>% filter(BasinChar == " NA") %>%
-  mutate(Serial_NumChar = as.character(Serial_Num)) %>% 
-  filter(Serial_NumChar %in% names(which(table(Serial_NumChar) > 1)))
+stormsToMap <- stormsToMap %>% mutate(rowNum = as.numeric(rownames(stormsToMap)))
 
-plot(newmap,xlim = c(-100,-20), ylim = c(0,55),  asp=1)
-points(buoyLocations$Longitude, buoyLocations$Latitude, col = "red", cex = 0.6)
-points(stormsToMapNorthA$Longitude, stormsToMapNorthA$Latitude, col= "blue", cex =0.6, pch =16)
+stormsWithBuoyData <- left_join(weightedResults, stormsToMap, by="rowNum")
 
-#which serial nums have less than 2 rows
-names(which(table(stormsToMapNorthA$Serial_NumChar) < 2))
+plot(newmap,xlim = c(-100,-30), ylim = c(0,55),  asp=1)
+points(stormsWithBuoyData$Longitude, stormsWithBuoyData$Latitude, col= "blue", cex =0.6)
+points(buoyLocations$Longitude, buoyLocations$Latitude, col = "red", cex = 0.6, pch=16)
+
+
 ```
