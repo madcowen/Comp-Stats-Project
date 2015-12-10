@@ -7,7 +7,128 @@ output: html_document
 
 ##Data Collection
 
-For our project, we want meteorological data for each recorded storm observation in the North Atlantic.  To gather this data, we must combine meteorological data with storm observations.  The storm data comes from the NOAA Best Track Archive for Climate Stewardship (IBTrACS), and each row of this data represents a location in space and time, with values for latitude, longitude, time, and date.  To get the meteorological data at this location in the ocean, we will match the location and date-time with NOAA buoy records, select the nearest buoys to that latitude and longitude, and then look at their meteorological records at that date and time.  Our very first step will be to determine which NOAA buoys are in the correct location and have the information we need, and then make a list of those buoys.
+For our project, we are combining meteorological data with recorded storm observations in the North Atlantic.  To gather this data, we must scrape both storm data and meteorological data and then integrate these two datasets.  The storm data came from the NOAA [International Best Track Archive for Climate Stewardship](http://www.ncdc.noaa.gov/ibtracs/index.php?name=ibtracs-data) (IBTrACS) , and the meterological data comes from the NOAA [National Data Buoy Center](http://www.ndbc.noaa.gov/historical_data.shtml), where we are using historical standard meterological data collected by buoys.
+
+To integrate these two dataset, we wanted to take meteorological buoy data that measured different variables of each storm in the storms dataset.  First we noted that we wanted each row of our dataset to represent a portion of the storm with a location in space and time.  So each row was a storm with a specific latitude, longitude, time, and date.  We then would find the buoys within a certain radius of this storm location/time and compute the average meterologial conditions (such as averaging the windspeed measured by several buoys nearby this storm location/time).  
+
+###First Collect Storm Data
+
+However, first we must bring in and clean the data on the storms from NOAA IBTrACS.  NOAA [International Best Track Archive for Climate Stewardship](http://www.ncdc.noaa.gov/ibtracs/index.php?name=ibtracs-data) has datasets on the storms that are sorted by the year the storm was in.  First we downloaded all the csv files in the years we wanted (2000 to 2015).  An example of how the storm data by year that IBTrACS has as csv files is Figure 1.   
+
+
+![ Figure 1. IBTrACS Storm Data By Year](stormByYearIBTrACS.PNG)  
+
+Figure 1. IBTrACS Storm Data By Year  
+
+
+
+ We saved these files as storm*year* on our computer.  Each dataset looks approximately like Figure 2.
+![ Figure 2. IBTrACS Storm Data Original File](stormCSV2015.PNG)  
+
+Figure 2. IBTrACS Storm Data Original File  
+
+
+After saving the datasets as storm*year*, we removed the first row (IBTrACS -- Version: v03r07 ) and the third row that gives units for the variable, so when we read in the csv files the header would appear correctly.
+
+To read in the csv files for the storm data, we used a for loop that read in each storm data set and put it in a list of datasets called allStorms.  Then for each dataset storm*year*, a for loop was used to discard all columns after 19 since these were not variables of interest and often had lots of missing data (labelled as -999).  
+
+Finally, a for loop was used to removed all rows in each storm*year* dataset that has missing data (-999) for latitude and longitude.  These cleaner datasets were assigned to the list cleanStorms.  We wanted to combine this list of all the storm datasets into one large dataset of all the storms from 2000 to 2015.
+
+So first, we checked to make sure the order of all the variables were the same between datasets.  Then combined them into one large dataset called finalStorms.  We further cleaned finalStorms by changing the ISO\_time variable to ymd\_hms using lubridate.  Then we selected out the information we wanted by keeping the variables Basin, Serial\_Num, Latitude, Longitude, time.  We filtered by Basin NA to get storms in the North Atlantic basin, which is where the buoys (the meterological data) are located.
+
+
+
+```{r, message=FALSE}
+# all the packages needed for the data scraping and cleaning
+require(dplyr)
+require(tidyr)
+require(geosphere) # to calc distances between latitude/longitude of points
+require(lubridate) # standardize dates and times
+require(XML) # scrape buoy lat/long data from web
+
+```
+
+
+```{r, eval= FALSE}
+
+# data from http://www.ncdc.noaa.gov/ibtracs/index.php?name=ibtracs-data
+# ftp://eclipse.ncdc.noaa.gov/pub/ibtracs/v03r07/all/csv/year/
+
+# save portion of name of storm files that differed between files
+stormYearsFile <- c("2000.csv","2001.csv","2002.csv","2003.csv","2004.csv","2005.csv","2006.csv","2007.csv","2008.csv","2009.csv","2010.csv","2011.csv","2012.csv","2013.csv","2014.csv", "2015.csv")
+
+# create a list to store these storm datasets in separately
+allStorms <- vector("list",length(stormYearsFile)) 
+
+# pull in csv files and assign each dataset to a different section of the list
+for(i in 1:length(stormYearsFile)){
+  allStorms[[i]] <-read.csv(paste("~/Comp-Stats-Project/storm",stormYearsFile[i], sep=""))
+}
+
+# only keep the first 19 variables (columns)
+for(i in 1:length(allStorms)){
+  allStorms[[i]] <- allStorms[[i]][,1:19]
+}
+
+# store cleaner data in new list of datasets
+cleanStorms <- vector("list",length(stormYearsFile))
+
+# remove all rows that have -999 (missing data) as latitude or longitude
+for(i in 1:length(allStorms)){
+  cleanStorms[[i]] <- allStorms[[i]]%>% 
+    filter(Latitude!=-999) %>% 
+    filter(Longitude!=-999)
+}
+
+# check all storms datasets have same order of variables
+checkingStorms <- c()
+for(i in 2:length(cleanStorms)){
+  checkingStorms[i-1] <- sum(names(cleanStorms[[1]]) == 
+                             names(cleanStorms[[i]]))
+}
+
+
+# combine all storm datasets into 1 big dataset
+finalStorms <- cleanStorms[[1]]
+for(i in 2: length(cleanStorms)){
+  finalStorms <- rbind(finalStorms, cleanStorms[[i]])
+}
+
+#add new column of time in ymd_hms type setup using parse date time fuction
+finalStorms <- finalStorms %>% mutate(time = parse_date_time(ISO_time, "%m%d%Y %H%M")) %>%
+  filter(year(time) != 1999) # dont want storms in 2000 season that start in 1999
+
+# only save variables we want and choose storms in Basin NA (north atlantic)
+stormsNorthAtl <- finalStorms %>% 
+  dplyr::select(Basin, Serial_Num, Latitude, Longitude, time, Wind.WMO., Wind.WMO..Percentile) %>%
+  mutate(BasinChar = as.character(Basin))%>% filter(BasinChar == " NA") 
+
+names(stormsNorthAtl)[6] <- "Wind_WMO"  # in knots
+names(stormsNorthAtl)[7] <- "Wind_WMO_Perc" # in percentiles
+
+# save dataset for use later
+dput(stormsNorthAtl, "stormsNorthAtl.txt")
+
+```
+
+```{r}
+
+stormsNorthAtl <- dget("stormsNorthAtl.txt")
+head(stormsNorthAtl,3)
+
+```
+
+###Getting Buoy Locations (combining Storm and Buoy Data)
+
+When we integrate the storm and buoy data, ideally we want each row to be a storm at a specific time and location (latitude/longitude) with meteorological conditions averaged over all the buoys near the storm location/time.  For instance we want our data to look like this:
+
+![](exTable.PNG)
+
+Figure 3.  Example of what we want our data to look at.  Note: data in this example is not accurate.  
+
+However, to do this, we need to get the meteorological data in buoys for the area around the storm time/location.  To do this, we will match the year of the storm row to the NOAA buoy records and determine all the buoys that have historical meterological data at this year.  Then we will determine which buoys that have data are closest to the storm location (latitude and longitude).  We will do futher refinement to only obtain data for buoys close enough to the storm location and around the same time. 
+
+Our very first step will be to determine which NOAA buoys are in the correct location and have the information we need, and then make a list of those buoys.
 
 A list of all stations can be found at [http://www.ndbc.noaa.gov/to_station.shtml](http://www.ndbc.noaa.gov/to_station.shtml); this is what part of the page looks like:
 
@@ -28,10 +149,9 @@ So buoy 41046 has historical meteorological data for 2007 - 2014, which is great
 
 But to get it, we would have to click on each link for each year, which takes us to a text file.  Since there are many buoys and many different years, getting all the data manually would be tedious and unproductive.  Instead, we will write some code to scrape it from the NOAA website.  First, we take all of the buoy numbers from [http://www.ndbc.noaa.gov/to_station.shtml](http://www.ndbc.noaa.gov/to_station.shtml). The source for the webpage is in HTML; each hyperlink has a specific tag, and since each buoy number is a hyperlink on the page we will grab all of the hyperlinks.  The package XML allows us to do this; the htmlTreeParse() function converts the HTML content of the webpage to a useful structure, and then xpathApply() is used to select all the hyperlinks by selecting for the hyperlink tags.
 
-```{r, message=FALSE, eval=FALSE}
+```{r, eval = FALSE}
 
 # We'll use the XML package to get info from web pages
-require(XML)
 
 # Read and parse HTML file
 buoylist.html = htmlTreeParse('http://www.ndbc.noaa.gov/to_station.shtml',
@@ -43,7 +163,7 @@ buoylist.text = unlist(xpathApply(buoylist.html, "//a/@href"))
 
 We now have a vector containing each hyperlink.  To get all the ones corresponding to buoys, we use the grep() function from the base package to find matches to the string pattern "station=" in the vector. Having found the indices of strings that contain the pattern "station=", we pull out the station number from each of those strings by selecting the substring of length 5 that start immediately after the "=" sign:
 
-```{r, eval=FALSE}
+```{r, eval = FALSE}
 
 # indices of hyperlinks that correspond to NOAA observation stations
 hrefIndices <- grep("station=", buoylist.text)
@@ -62,13 +182,14 @@ for(i in 1:length(hrefIndices)){
 
 ```
 
+
 Why do we only look at strings of lengths five? It turns out that's how long a buoy ID number is, according to the NOAA documentation at [http://www.ndbc.noaa.gov/staid.shtml](http://www.ndbc.noaa.gov/staid.shtml) :
 
 ![](buoyIDInfo.JPG)
 
 And in fact, as we are only interested in buoys in the North Atlantic, this documentation tells us that we need only consider those buoy numbers beginning with 41, 42, or 44, so let's select just those values from the vector of buoy numbers we just created:
 
-```{r, eval=FALSE}
+```{r, eval = FALSE}
 
 buoyNums <- buoyNums[substr(buoyNums, 1,2) %in% c("41", "42", "44")]
 
@@ -80,7 +201,7 @@ Now that we have a list of buoys, we want to know the location of each buoy.  Ea
 
 Since we don't want to have to manually collect these latitude and longitude values, we will again scrape them from the HTML source for each buoy webpage.  The address for buoy 42042 is [http://www.ndbc.noaa.gov/station_page.php?station=42042](http://www.ndbc.noaa.gov/station_page.php?station=42042), and in fact every buoy has the same address up until the final 5 characters, which hold the buoy ID number. Since we have a vector containing each buoy number, we can loop through that vector and paste each number in the vector into the basic address form. Then, we can find the latitude and longitude on the HTML for that page.
 
-```{r, eval=FALSE}
+```{r, eval = FALSE}
 
 lat <- c() # vector to hold buoy latitudes
 lon <- c() # vector to hold buoy longitudes
@@ -107,13 +228,15 @@ for(i in 1:length(buoyNums)){
   lon[i] <- as.numeric(substr(doc.text[2], startind2, stopind2))
 }
 
-# remove those which are not missing latitude and longitude
+# remove those which are missing latitude and longitude
 buoyNums <- buoyNums[-which(is.na(lat))]
 lat <- lat[-which(is.na(lat))]
 lon <- lon[-which(is.na(lon))]
 
 ```
 
+
+Note: When you run the above chunk you get NA introduced by coercion, which is removed when we removed the buoys that are missing latitude and longitude.
 In the last few lines, we've removed those buoys without latitude and longitude information.  Since we need the buoy locations to match them up with storms data, we can't use a buoy if we don't have its location.
 
 We are interested in the years 2000 - 2015.  Some of the buoys we selected have data for some of these years, while some do not have data for any of these years (for example, old buoys from the '70s and '80s). So, we need to go through each buoy and determine which years it has data for.  The result will be a matrix which contains the number of each buoy, its location, and a boolean variable for each year from 2000 to 2015 which is TRUE if it has data for that year and false otherwise. 
@@ -124,7 +247,7 @@ To get the data, we note that the historical data for each buoy can be found at 
 
 We want to know for which years the buoys have standard meteorological data.  For buoy 42042, as we can see in the image, data only exists for year 2000. We'll use our HTML scraping tools again to find the "Historical Data" list in the HTML source. Then, since standard meteorological data is the first item in the historical data list, we select all the numbers in that item.
 
-```{r, eval=FALSE}
+```{r, eval= FALSE}
 
 # interested in years 2000 - 2015
 stormYears <- seq(from=2000, to=2015, by=1)
@@ -168,7 +291,7 @@ for(i in 1:length(buoyNums)){
 
 We now have a matrix that contains the years of data for each buoy. We also want the number and location, so let's add those.  So that our latitude and longitude will be simply numeric, without the need for degrees N or W, we will use the format (found also in the IBTrACS storms data) of assigning a sign to latitude and longitude instead of a compass direction. Latitudes north of the equator and longitudes east of the prime meridian are positive, while latitudes south of the equator and longitudes west of the prime meridian are negative.  So, for example, 35.56 N 54.78 W becomes the pair (35.56, -54.78). This change is helpful both to match with the IBTrACS data and to avoid the need for character strings in storing our location data.
 
-```{r, eval=FALSE}
+```{r, eval = FALSE}
 
 # store buoy number in matrix
 buoyLocsAndYears$BuoyNumber <- buoyNums 
@@ -179,20 +302,18 @@ buoyLocsAndYears$Latitude <- lat
 # store longitude in matrix (all longitudes are W of prime meridian)
 buoyLocsAndYears$Longitude <- -1*lon
 
-```
-
-
-Finally, we can store the data if we want, using the dput() function.
-
-```{r, eval=FALSE}
-
-# save the data frame as a text file
-#dput(buoyLocsAndYears, "buoyLocsAndYears.txt")
-
-# If you want to access it again, use this
-# dget("buoyLocsAndYears.txt")
+# save table for use later
+dput(buoyLocsAndYears, "buoyLocsAndYears.txt")
 
 ```
+
+```{r}
+
+buoyLocsAndYears <- dget("buoyLocsAndYears.txt")
+head(buoyLocsAndYears,3)
+
+```
+
 
 However, there is a problem with the buoy collection we've just performed: some of the buoys do not have the data we need! There are two ways this can happen, either the buoy simply does not have data for the years 2000 - 2015 (its an old buoy) or it is not really a buoy.  "But how can it not be a buoy?" you ask, "since we selected the buoy numbers following the NOAA ID numbering system?" Well, as we briefly hinted at above, NOAA has information on a whole variety of stations (e.g., oil rigs), not just buoys.  The numbering system applies to ALL stations, and so we inadvertently selected a bunch of other types of station as well.  Like station number 42386, which belongs to Chevron:
 
@@ -200,19 +321,12 @@ However, there is a problem with the buoy collection we've just performed: some 
 
 We need to remove the buoys that do not have the data we want.  The way we will do this is to actually try and get the data, and see if we can.  It turns out that each year of standard meteorological data is found in a text file at a web address with the same format, differing only by buoy ID number and the year.  For example, data from 2014 for buoy 42036 is found at [http://www.ndbc.noaa.gov/view_text_file.php?filename=42036h2014.txt.gz&dir=data/historical/stdmet/](http://www.ndbc.noaa.gov/view_text_file.php?filename=42036h2014.txt.gz&dir=data/historical/stdmet/). For each buoy, we will check each year to see whether it has standard meteorlogical data for that year.  If it does for any of the years, we will store the buoy number.  We use the try() function to attempt to get data from each of these web addresses, and we make 10 attempts to get the data.  If we fail after 10 attempts, we move on to the next year.
 
-```{r, message=FALSE}
+```{r, eval= FALSE}
 
-# need dplyr package for some data wrangling
-require(dplyr)
+# final dataframe of buoy locations and years of data 
+# will be called buoyLocationsFixed
 
-```
-
-```{r, eval = FALSE}
-
-# final matrix of buoy locations and years of data 
-#  will be called buoyLocationsFixed
-#buoyLocationsFixed<-dget("buoyLocsAndYears.txt")
-buoyLocationsFixed <- buoyLocsAndYears
+buoyLocationsFixed <- buoyLocsAndYears # dataframe that needs cleaning
 
 # numeric vector to hold the buoy numbers we want to keep
 isABuoy <- c()
@@ -232,43 +346,42 @@ for(k in 1:(nrow(buoyLocationsFixed))){
                   buoyLocationsFixed$BuoyNumber[k],
                   "h",buoyYear, ".txt.gz&dir=data/historical/stdmet/", sep ="")
         
-        if(notFoundDataYet){  
-          # call in buoy data with try command in while loop
-          i <- 1 # 1 = failed to connect, 2 = managed to connect
+    if(notFoundDataYet){  
+      # call in buoy data with try command in while loop
+      i <- 1 # 1 = failed to connect, 2 = managed to connect
           
-          # count the number of times we try and fail to get the data
-          countError <- 0
+      # count the number of times we try and fail to get the data
+      countError <- 0
           
-          # while we haven't connected, and have tried fewer than 10 times,
-          #  try to connect
-          while (i < 2 & countError < 10){
-            data <- try(read.table(site,sep="", fill=TRUE, header=TRUE, 
-                                   comment.char=""),
-                        silent=TRUE)
-            
-            # if we get a try-error, we failed.  Increase the number of failures
-            #  and go back to the beginning of the while loop
-            if (class(data) == "try-error") {
-              countError = countError + 1
-              next
-            } else {  # otherwise, we managed to connect, so data exists
-              i <- i + 1  # increase i to stop entering the while loop
-            }
-          }
-          
-          # if we got a try error all 10 attempts, the class of our 'data'
-          #   while be 'try-error', in which case we do nothing
-          # otherwise, we got data and we store the buoy number as a good one
-          # then set notFoundDataYet to FALSE so that when we look at the next 
-          #   year we don't have to try to find data
-          #   (if the buoy has data for one year, it doesn't matter 
-          #    about the others)
-          if(class(data) != "try-error"){
-            isABuoy <- c(isABuoy, buoyLocationsFixed$BuoyNumber[k])
-            notFoundDataYet <- FALSE
-          }
+      # while we haven't connected, and have tried fewer than 10 times,
+      #  try to connect
+      while (i < 2 & countError < 10){
+        data <- try(read.table(site,sep="", fill=TRUE, header=TRUE,
+                               comment.char=""), silent=TRUE)
         
+        # if we get a try-error, we failed.  Increase the number of failures
+        #  and go back to the beginning of the while loop
+        if (class(data) == "try-error") {
+          countError = countError + 1
+          next
+        } else {  # otherwise, we managed to connect, so data exists
+          i <- i + 1  # increase i to stop entering the while loop
         }
+      }
+      
+      # if we got a try error all 10 attempts, the class of our 'data'
+      #   while be 'try-error', in which case we do nothing
+      # otherwise, we got data and we store the buoy number as a good one
+      # then set notFoundDataYet to FALSE so that when we look at the next 
+      #   year we don't have to try to find data
+      #   (if the buoy has data for one year, it doesn't matter 
+      #    about the others)
+      if(class(data) != "try-error"){
+        isABuoy <- c(isABuoy, buoyLocationsFixed$BuoyNumber[k])
+        notFoundDataYet <- FALSE
+      }
+        
+    }
   }
   
 }
@@ -277,14 +390,285 @@ for(k in 1:(nrow(buoyLocationsFixed))){
 
 Now we'll store the list of buoy numbers that we want to keep, then use the filter() function to select the rows of the buoy locations and years matrix for which the buoy number is in the list of those that we want to keep. Finally, we store the fixed version (buoyLocationsFixed) of the buoy matrix, which contains the ID number, latitude, longitude, and year indicator variables for only those buoys that have the data we want.
 
-```{r, eval=FALSE}
-
-#save so we don't lose it
-#dput(isABuoy, "isABuoy.txt")
-
+```{r, eval = FALSE}
+# buoy locations (lat/long) filtered by those that are buoys (i.e. not oil rigs) and that have data
 buoyLocationsFixed <- buoyLocationsFixed %>% filter(BuoyNumber %in% isABuoy)
 
-#dput(buoyLocationsFixed, "buoyLocationsFixed.txt")
-
+# save the data for use later
+dput(buoyLocationsFixed, "buoyLocationsFixed.txt")
 
 ```
+
+
+```{r}
+
+buoyLocationsFixed <-dget("buoyLocationsFixed.txt")
+
+head(buoyLocationsFixed,3)
+
+```
+
+
+###Combining Storm and Buoy Data (calculating weighted means for buoy data)
+
+Now that we have a dataset *buoyLocationsFixed*  of all the buoys with their locations (latitude/longitude) and that tells us which year each buoy has data for, we can now combine this with the storm dataset *stormsNorthAtl*.
+
+To integrate the storms and buoy data, we want take each row of the storms dataset (which is a storm at a time and location) and compute the average meterological conditions around the storm time/location as measured by buoys.
+
+ADD MORE DESCRIPTIONS LATER
+
+```{r, eval = FALSE}
+
+# time how long this process takes
+Sys.time()
+
+# table of buoy num, lat, long, and TRUE/FALSE if have data in years 2000 to 2015
+buoyLocations <- dget("buoyLocationsFixed.txt") 
+
+# vector of weighted means of weather variables
+weightedMeans <- c()
+
+# loops over every row in stormsNorthAtl dataset
+for(k in 1:nrow(stormsNorthAtl)){
+  
+  # indicates whether this storm row has any buoys near it with data around the time of the storm row
+  stormRowHasBuoyData = FALSE
+  
+  # the storm row we are finding avg weather variables for
+  theRow <- stormsNorthAtl[k,]
+  
+  #column num that corresponds to variable yearX in buoyLocations file
+  #yearX is the year of the storm for this row
+  yearColNum <- which(names(buoyLocations)==paste("year", year(theRow$time), sep=""))
+  
+  # only take buoys w data from yearX
+  buoyLocsThatYear <- buoyLocations %>% filter(buoyLocations[,yearColNum] == TRUE)
+  
+  # longitude and latitude of this storm row
+  stormCoords <- c(theRow$Longitude, theRow$Latitude)
+  
+  # function to compute dist from storm coord to buoy (buoy parameter takes long/lat of buoy)
+  computeDistanceTo <- function(buoy){
+    return(distGeo(stormCoords,buoy))
+  }
+  
+ 
+  # computes distances of buoys with data in yearX to the storm
+  # filter so we only have buoys within 500 km of storm 
+  buoyDists <- buoyLocsThatYear %>% mutate(distToStorm = 
+             apply(cbind(Longitude, Latitude), 1, computeDistanceTo)) %>%
+    filter(distToStorm <= 500000) %>% dplyr::select(BuoyNumber, distToStorm)
+  
+  # save this buoy numbers so we can get their datasets
+  buoyNumber <- buoyDists$BuoyNumber
+  buoyYear <- year(theRow$time) # yearX that storm was in
+  
+  # if there are buoys near the storm, pull in their data
+  # otherwise do nothing and go back through for loop over
+  # rows of storm data
+  if(length(buoyNumber)!= 0){
+    
+    # dataset where we store all the buoy data for buoys near the storm
+    matchingBuoys <- as.data.frame(matrix(nrow = 1,ncol =19))
+    names(matchingBuoys) = c("YYYY", "MM", "DD", "hh", "WD", "WSPD", "GST", 
+                             "WVHT", "DPD", "APD", "MWD", "BAR", "ATMP" ,
+                             "WTMP","DEWP" ,"VIS", "TIDE", "ymdday", "BuoyNumber")
+    
+    #loops over all buoys near this storm row and pulls in the buoy datasets
+    for(j in 1:length(buoyNumber)){
+      # url for .txt with buoy data for a certain year
+      site <- paste("http://www.ndbc.noaa.gov/view_text_file.php?filename=", 
+                    buoyNumber[j], "h", buoyYear, ".txt.gz&dir=data/historical/stdmet/", sep ="")
+    
+      # call in buoy data with try command in while loop
+      
+      # count the number of times we try and fail to get the data (due to 404 Errors etc)
+      countError <- 0
+      i <- 1
+      while (i < 2 & countError < 10){ # keep trying to get data unless get 10 error messages, then give up
+        data <- try(read.table(site,sep="", fill=TRUE, header=TRUE, comment.char=""), silent=TRUE)
+        if (class(data) == "try-error") { # e.g. try error due to 404 Error
+          countError = countError + 1
+          next # goes back to while loop
+        } else {
+          i <- i + 1 # got data, exit while loop
+        }
+      }
+    
+      # we try to get the data 10 times; if we fail every time,
+      # the data will be of class try-error.  
+      # if the data is actual buoy data, go on to clean up and average the buoy data
+      # if we could not get data (is try error), go onto next buoy Number in loop 
+      # and try to pull in that data
+      if(class(data) != "try-error"){
+        # standardize the buoy datasets variable names 
+        
+        # clean up if buoy data .txt has comment sign (#) -- 2007 and later
+        if(length(grep("X.",names(data)))>0){
+          # ie names variable X.YY to YY
+          names(data)[grep("X.",names(data))] <-
+            substr(names(data)[grep("X.",names(data))],
+                   start=3,nchar(names(data)[grep("X.",names(data))]))
+          # removes row of variable units
+          data <- data[-1,]
+          
+          # change YY to YYYY, WDIR to WD, PRES to BAR
+          names(data)[grep("YY", names(data))] <- "YYYY"
+          names(data)[grep("WDIR", names(data))] <- "WD"
+          names(data)[grep("PRES", names(data))] <- "BAR"
+          
+          # remove mm (min col)
+          data <- data[,-grep("mm", names(data))]
+        } else if(buoyYear>2004) { # only need to remove min to standardize
+          # remove mm (min col)
+          data <- data[,-grep("mm", names(data))]
+        }
+          
+        # make everything numeric
+        data <- as.data.frame(apply(data[,1:(length(data))], 2, as.numeric))
+          
+        # make new variable ymd_hms w lubridate (set all min 00 and sec to 00)
+        nextRow<-data%>%mutate(ymdday=ymd_hms(paste(YYYY,"-", MM,"-",DD, 
+                                                    "-", hh, "-", 00, "-", 00)))%>%
+          filter(ymdday == theRow$time) #only want data at time matching storm
+        
+        # if row(s) of buoy data at storm time is not empty, add buoy number onto row  
+        if(nrow(nextRow) > 0){
+          # indicates this storm row has buoy data at this location and time
+          stormRowHasBuoyData = TRUE 
+          nextRow <- as.data.frame(c(nextRow, buoyNumber[j]))
+          names(nextRow)[ncol(nextRow)] <- "BuoyNumber"
+          
+          # matchingBuoys holds data for all the buoys near the storm
+          # each row of matchingBuoys is a buoy at a certain time
+         
+          if(j==1){
+            # assign first row of buoy data to empty matchingBuoys (to get formatting correct)
+            matchingBuoys <- nextRow
+          } else {
+            # rbind on other nextRows (rows of buoy data) sequentially
+            matchingBuoys <- rbind(matchingBuoys, nextRow)
+          }
+            
+        }
+      
+      }
+   
+    }
+    
+    # if this storm row has buoys near it with data around the time of the storm
+    # calculate weighted means of this buoy data
+    if(stormRowHasBuoyData){
+      # join buoy data for that storm row to distance from buoy to storm
+      matchingBuoys <- matchingBuoys %>% 
+        mutate(BuoyNumber = as.character(BuoyNumber))%>%
+        left_join(buoyDists, by = "BuoyNumber")
+      
+      # converting 999 and 99 and 9999 (missing data) to NA
+      matchingBuoys[,c(6:10, 16:17)][matchingBuoys[,c(6:10, 16:17)] == 99] <- NA
+      
+      matchingBuoys[,c(5, 11, 13:15)][matchingBuoys[,c(5, 11, 13:15)] == 999] <- NA
+      
+      matchingBuoys[,12][matchingBuoys[,12] == 9999] <- NA
+      
+      # average rows with same buoy number, with na.rm = TRUE 
+      # assume buoy data at close to same time for the same data is repetitive, 
+      # so average by buoy Number to prevent overweighting
+      matchingBuoys <- matchingBuoys %>% group_by(BuoyNumber) %>%
+        summarize_each(funs(mean(., na.rm=TRUE)))
+      
+      # change to data frame to get formatting correct
+      matchingBuoys <- as.data.frame(matchingBuoys)
+      
+      # function to calculate weighted averages (weighted inversely by distance of buoy to storm row)
+      weightedByDistance <- function(x){
+        return(weighted.mean(x, w= 1/(matchingBuoys$distToStorm), na.rm = TRUE))
+      }
+      
+      # calculates weighted avgs of buoy variables for each storm row
+      meansForRow <- apply(matchingBuoys[,c(6:18)], 2, weightedByDistance)
+      
+      # if weighted avgs not all NaN then add on corresponding storm rowNum
+      if(sum(meansForRow, na.rm=TRUE) > 0){
+        meansForRow <- c(meansForRow, k)
+        names(meansForRow)[length(meansForRow)] <- "rowNum"
+        meansForRow <- as.data.frame(t(as.matrix(meansForRow))) # reformatting
+        
+        # weightedMeans is a dataframe that has weather variables that are weighted avgs of weather variables
+        # from buoys near the storm row for all the storm rows
+        if(length(weightedMeans) == 0){ 
+          weightedMeans <- meansForRow # assign first row of weighted weather variable to empty vector for correct formatting
+        } else {
+          weightedMeans <- rbind(weightedMeans, meansForRow) # rbind on weighted weather variables for other storm rows 
+        }
+      }
+    }
+  }
+}
+
+# to determine when loop ended
+Sys.time()
+
+# add row number to storms dataset to allow joining
+stormsNorthAtl <- stormsNorthAtl %>% mutate(rowNum = as.numeric(rownames(stormsNorthAtl)))
+
+# added weighted means data onto storms data (only keep storm rows that has buoy data )
+stormsWithBuoyData <- left_join(weightedMeans, stormsNorthAtl, by="rowNum")
+
+# save for use later
+dput(weightedMeans, "weightedMeans.txt")
+dput(stormsWithBuoyData, "stormsWithBuoyData.txt")
+
+```
+
+```{r}
+
+weightedMeans <- dget("weightedMeans.txt")
+stormsWithBuoyData <- dget("stormsWithBuoyData.txt")
+
+# end result of dataset of weighted weather variables for each storm row
+# (except skips storm rows that do not have buoy data at that time/location)
+head(weightedMeans, 4)
+
+# combined datasets
+head(stormsWithBuoyData, 4)
+
+```
+
+```{r, eval= FALSE}
+#run 1
+#when stopped k was 2562 dim(weightedMeans) was 738 14
+#got errors see below (seems couldn't pull in some buoy data, bad pages for those?)
+
+# preliminary weighted means
+#dput(weightedMeans, "prelimWeightedMeans.txt")
+#prelimWeightedMeans <- dget("prelimWeightedMeans.txt")
+```
+
+```{r , eval= FALSE}
+# did get 41 warning messages, but were not able to see what they were
+#dput(weightedMeans, "completeWeightedMeans.txt")
+#completeWeightedMeans <- dget("completeWeightedMeans.txt")
+
+```
+
+
+```{r,  eval= FALSE}
+# ran full loop again, only got 2 warning messages (In file(file, "rt") :
+#unable to connect to 'www.ndbc.noaa.gov' on port 80.)
+#dput(weightedMeans, "completeWeightedMeans2.txt")
+#completeWeightedMeans2 <- dget("completeWeightedMeans2.txt")
+
+#2 datasets slightly different
+#all.equal(completeWeightedMeans, completeWeightedMeans2)
+
+
+#system print out of times
+#"2015-12-06 11:04:27 PST"  #start of loop for StormsAndBuoysData
+#"2015-12-06 23:01:57 PST"
+```
+
+  
+PROBLEMS TO ADDRESS:
+1. Check over formatting -- seems like loops are not indented properly 
+
