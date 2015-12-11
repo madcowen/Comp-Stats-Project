@@ -218,14 +218,14 @@ for(i in 1:length(buoyNums)){
   doc.text = unlist(xpathApply(doc.html, '//p', xmlValue))
   
   # search for ' N ', which will appear immediately after the latitude
-  startind1 <- min(unlist(gregexpr(' N ',doc.text[2]))) - 6 # latitude start
+  startind1 <- min(unlist(gregexpr(' N ',doc.text[1]))) - 6 # latitude start
   stopind1 <- startind1 + 5 # latitude end
   startind2 <- stopind1 + 4 # longitude start
   stopind2 <- startind2 + 5 # longitude end
   
   # store the latitude and longitude in the vectors we made
-  lat[i] <- as.numeric(substr(doc.text[2], startind1, stopind1))
-  lon[i] <- as.numeric(substr(doc.text[2], startind2, stopind2))
+  lat[i] <- as.numeric(substr(doc.text[1], startind1, stopind1))
+  lon[i] <- as.numeric(substr(doc.text[1], startind2, stopind2))
 }
 
 # remove those which are missing latitude and longitude
@@ -618,6 +618,11 @@ stormsWithBuoyData <- left_join(weightedMeans, stormsNorthAtl, by="rowNum")
 # save for use later
 dput(weightedMeans, "weightedMeans.txt")
 dput(stormsWithBuoyData, "stormsWithBuoyData.txt")
+
+# Results
+# Start time: 2015-12-10 21:03:42 PST
+# End time: 2015-12-11 09:39:46 PST
+# Warnings: 49 warnings of form "In file(file, "rt") : unable to connect to 'www.ndbc.noaa.gov' on port 80."
 
 ```
 
