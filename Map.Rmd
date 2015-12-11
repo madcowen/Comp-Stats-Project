@@ -18,7 +18,7 @@ require(ggmap)
 newmap <- getMap(resolution = "low")
 
 buoyLocations <-dget("buoyLocationsFixed.txt")
-stormsToMap <- dget("stormsNorthAtl.txt")
+stormsToMap <- dget("stormsNorthAtl_NeuralNet.txt")
 weightedResults <- dget("completeWeightedMeans2.txt")
 
 stormsToMap <- stormsToMap %>% mutate(rowNum = as.numeric(rownames(stormsToMap)))
@@ -36,8 +36,15 @@ points(buoyLocations$Longitude, buoyLocations$Latitude, col = "red", cex = 0.6, 
 
 ```{r}
 
+# before actually use filter out buoy data was NAs
+
 Map <- qmap("north atlantic ocean", zoom = 3)
 
 Map
+
+
+Map + geom_point(aes(x = Longitude, y = Latitude, colour = Wind_WMO), 
+                 data = stormsWithBuoyData) + 
+  scale_colour_gradientn(colours=rainbow(4))
 
 ```
