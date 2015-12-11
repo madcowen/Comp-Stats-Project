@@ -158,3 +158,46 @@ Neural Networks- handwriting example cont
 $w$ weights; $b$ biases; $n$ # training inputs; $a$ predicted outputs  
 -want to minimize cost
 
+
+Data Collection
+========================================================
+- Goal: combine information from North Atlantic storms with meteorological data from buoys.
+- Data Sources
+  - Storms: NOAA Best Track Archive for Climate Stewardship (IBTrACS)
+  - Buoys: NOAA National Data Buoy Center (NDBC)
+  
+Storms Data
+========================================================
+![](stormByYearIBTrACS.PNG)
+
+- CSV data for storms in each year on IBTrACS website
+- Records back to late 1800's; we are interested in 2000 - 2015
+
+Storms Data
+========================================================
+- Each row in the CSV files is an observation in space and time
+- Variables for location, time, windspeed, and identification
+
+![](stormCSV2015.PNG)
+
+Gathering Storms Data
+========================================================
+- Download CSV files for years 2000 - 2015 from IBTrACS
+- Filter to choose rows with Basin = " NA" (North Atlantic)
+
+NOAA Buoy Data
+========================================================
+List of all NOAA observation stations:
+
+![](noaaBuoyList.JPG)
+
+NOAA Buoy Data
+========================================================
+Historical standard meteorological data:
+
+![](buoy41046_2007data.JPG)
+
+Matching Storms and Buoys
+========================================================
+- Want to match storm observations with nearby buoys
+- Will use the location and date-time of storm observations to match
