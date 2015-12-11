@@ -1,0 +1,210 @@
+---
+title: "neuralNetworks"
+author: "Ciaran Evans"
+date: "12/10/2015"
+output: html_document
+---
+
+```{r, message = FALSE}
+
+
+require(neuralnet)
+require(dplyr)
+require(tree)
+require(randomForest)
+require(ggplot2)
+
+```
+
+
+```{r}
+
+# buoy weighted means data
+completeWeightedMeans2 <- dget("completeWeightedMeans2.txt")
+
+# storms data
+stormsNorthAtl <- dget("stormsNorthAtl_NeuralNet.txt")
+
+# delete this later
+# remove filter serial num before run on new data
+stormsNorthAtl <- stormsNorthAtl %>% 
+  mutate(Serial_NumChar = as.character(Serial_Num)) %>% 
+  filter(Serial_NumChar %in% names(which(table(Serial_NumChar) > 1)))
+# remove when use new data
+stormsNorthAtl <- stormsNorthAtl %>% dplyr::select(-Serial_NumChar)
+
+# keep this 
+# add row number onto storms data so we can join tables
+stormsNorthAtl <- stormsNorthAtl %>%
+  mutate(rowNum = as.numeric(rownames(stormsNorthAtl)))
+
+# join buoy weighted means and storms data by row number
+stormsWithBuoyData <- left_join(completeWeightedMeans2, stormsNorthAtl, by = "rowNum")
+
+# keep variables we want to use and that are not predominately NAs
+# change wind_wmo to categorical variables
+stormsWithBuoyData <- stormsWithBuoyData %>% 
+  dplyr::select(WD, WSPD, GST, WVHT, APD, BAR, ATMP, WTMP, Wind_WMO) %>%
+  mutate(hurricaneCat = 
+           ifelse(Wind_WMO <= 33, "TD",
+                  ifelse(Wind_WMO <= 63, "TS",
+                         ifelse(Wind_WMO <= 82, "One", 
+                                ifelse(Wind_WMO <= 95, "Two",
+                                       ifelse(Wind_WMO <= 112, "Three",
+                                              ifelse(Wind_WMO <= 136, "Four",
+                                                     "Five")))))))
+
+# see what the data looks like, look for NAs
+summary(stormsWithBuoyData)
+
+# find which rows have missing data
+rowLabs <- seq(1:nrow(stormsWithBuoyData))
+rowLabs <- rowLabs[rowSums(is.na(stormsWithBuoyData)) > 0]
+
+# take out all the rows with missing data
+stormsWithBuoyData <- stormsWithBuoyData[-rowLabs,]
+
+## look at Wind_WMO first
+
+stormsWithBuoyData1<-stormsWithBuoyData %>% dplyr::select(-hurricaneCat)
+
+
+mins <- apply(stormsWithBuoyData1, 2, min)
+
+maxs <- apply(stormsWithBuoyData1, 2, max)
+  
+# normalize the data
+stormsWithBuoyData1<-stormsWithBuoyData1 %>% scale(center = mins, scale = maxs - mins)
+
+stormsWithBuoyData1 <- as.data.frame(stormsWithBuoyData1)
+
+
+# split in 3/4 training and 1/4 test
+trainStormID <- sample(1:nrow(stormsWithBuoyData1),
+ round(0.75*nrow(stormsWithBuoyData1)))
+
+# training data
+trainingStorms <- stormsWithBuoyData1[trainStormID,]
+
+# testing data 
+testingStorms <- stormsWithBuoyData1[-trainStormID,]
+
+
+# try 4 or 5 nodes for one hidden layer
+net.storms <- neuralnet(Wind_WMO ~ WD + WSPD + GST + WVHT + APD + ATMP + WTMP,
+                        trainingStorms, hidden = 2)
+
+
+results <- compute(net.storms, testingStorms[,c(1:5, 7:8)])$net.result[,1]
+
+MSE <- sum((testingStorms[,9] - results)^2)/nrow(testingStorms)
+MAD <- sum(abs(testingStorms[,9] - results))/nrow(testingStorms)
+
+plot(testingStorms[,9], abs(testingStorms[,9] - results))
+
+```
+
+
+
+
+
+
+```{r}
+
+## CART
+
+stormTree <- tree(Wind_WMO ~ WD + WSPD + GST + WVHT + APD + ATMP + WTMP,
+                  data= trainingStorms)
+
+
+plot(stormTree) ; text(stormTree)
+
+
+# run nested for loops to determine what values of mtry and ntree to use
+sizeM <- seq(1,(ncol(trainingStorms)-1), by=1)
+numTrees<- seq(20,500, by = 20)
+
+error.rf <- c()
+mtrys <- c()
+ntrees <- c()
+
+
+
+for(i in 1:length(sizeM)){
+  for(j in 1:length(numTrees)){
+    
+    storm.rf <- randomForest(Wind_WMO ~., data = trainingStorms, mtry=sizeM[i],     
+                               ntree=numTrees[j])
+    yhat.rf <- predict(storm.rf, newdata = testingStorms)
+    error.rf <- c(error.rf,sum((yhat.rf - testingStorms$Wind_WMO)^2))
+    mtrys <- c(mtrys,sizeM[i])
+    ntrees <- c(ntrees,numTrees[j])
+  }
+}
+
+#make dataframe of error rate, mtry and ntree values
+output.rf <- data.frame(error=error.rf,mtry=as.factor(mtrys), ntree=ntrees)
+
+#plot results to decide which values mtry and ntree to use
+output.rf %>% ggplot(aes(x=ntree, y=error, color = mtry, lty = mtry)) +
+  geom_line() + geom_point()+ 
+  xlab("Number of Trees") + ylab("Test Error Rate") 
+
+
+
+
+```
+
+
+
+
+```{r}
+
+# normalize the data
+stormsWithBuoyData2<-as.data.frame(cbind(stormsWithBuoyData1,
+                                         stormsWithBuoyData$hurricaneCat))
+names(stormsWithBuoyData2)[10] <- "hurricaneCat"
+
+# take out Wind_WMO
+stormsWithBuoyData2 <- stormsWithBuoyData2 %>% dplyr::select(-Wind_WMO)
+
+stormsWithBuoyData2 <- as.data.frame(cbind(stormsWithBuoyData2,
+                                    stormsWithBuoyData2$hurricaneCat == "TD",
+                                    stormsWithBuoyData2$hurricaneCat == "TS",
+                                    stormsWithBuoyData2$hurricaneCat == "One",
+                                    stormsWithBuoyData2$hurricaneCat == "Two",
+                                    stormsWithBuoyData2$hurricaneCat == "Three",
+                                    stormsWithBuoyData2$hurricaneCat == "Four",
+                                    stormsWithBuoyData2$hurricaneCat == "Five"))
+
+names(stormsWithBuoyData2)[10:16] <- c("TD", "TS", "One", "Two","Three", "Four", "Five")
+
+# split in 3/4 training and 1/4 test
+trainStormID2 <- sample(1:nrow(stormsWithBuoyData2),
+ round(0.75*nrow(stormsWithBuoyData2)))
+
+# training data
+trainingStorms2 <- stormsWithBuoyData2[trainStormID2,]
+
+# testing data 
+testingStorms2 <- stormsWithBuoyData2[-trainStormID2,]
+
+
+net.storms.cat <- neuralnet(TD + TS + One + Two + Three + Four + Five ~ WD + WSPD + GST +
+                              WVHT + APD + ATMP + WTMP, trainingStorms2, hidden = 1)
+
+
+
+results.cat <- compute(net.storms.cat, testingStorms2[,c(1:5, 7:8)])$net.result
+
+
+# Put multiple binary output to categorical output
+maxidx <- function(arr) {
+    return(which(arr == max(arr)))
+}
+
+idx <- apply(results.cat, c(1), maxidx)
+prediction <- c("TD", "TS", "One", "Two","Three", "Four", "Five")[idx]
+table(prediction, testingStorms2$hurricaneCat)
+
+```
