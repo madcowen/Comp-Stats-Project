@@ -8,11 +8,13 @@ output: html_document
 ```{r, eval=FALSE}
 require(rworldmap)
 require(dplyr)
+require(ggmap)
 
 ```
 
 
 ```{r}
+
 newmap <- getMap(resolution = "low")
 
 buoyLocations <-dget("buoyLocationsFixed.txt")
@@ -27,5 +29,15 @@ plot(newmap,xlim = c(-100,-30), ylim = c(0,55),  asp=1)
 points(stormsWithBuoyData$Longitude, stormsWithBuoyData$Latitude, col= "blue", cex =0.6)
 points(buoyLocations$Longitude, buoyLocations$Latitude, col = "red", cex = 0.6, pch=16)
 
+
+```
+
+
+
+```{r}
+
+Map <- qmap("north atlantic ocean", zoom = 3)
+
+Map
 
 ```
