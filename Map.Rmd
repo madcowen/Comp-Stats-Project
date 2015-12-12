@@ -17,13 +17,13 @@ require(ggmap)
 
 newmap <- getMap(resolution = "low")
 
-buoyLocations <-dget("buoyLocationsFixed.txt")
-stormsToMap <- dget("stormsNorthAtl_NeuralNet.txt")
-weightedResults <- dget("completeWeightedMeans2.txt")
+#buoyLocations <-dget("buoyLocationsFixed.txt")
+#stormsToMap <- dget("stormsNorthAtl_NeuralNet.txt")
+#weightedResults <- dget("completeWeightedMeans2.txt")
 
-stormsToMap <- stormsToMap %>% mutate(rowNum = as.numeric(rownames(stormsToMap)))
+#stormsToMap <- stormsToMap %>% mutate(rowNum = as.numeric(rownames(stormsToMap)))
 
-stormsWithBuoyData <- left_join(weightedResults, stormsToMap, by="rowNum")
+#stormsWithBuoyData <- left_join(weightedResults, stormsToMap, by="rowNum")
 
 plot(newmap,xlim = c(-100,-30), ylim = c(0,55),  asp=1)
 points(stormsWithBuoyData$Longitude, stormsWithBuoyData$Latitude, col= "blue", cex =0.6)

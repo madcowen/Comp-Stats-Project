@@ -13,10 +13,10 @@ require(dplyr)
 ```
 
 ```{r}
-buoyLocationsFixed<-dget("buoyLocsAndYears.txt")
+#buoyLocationsFixed<-dget("buoyLocsAndYears.txt")
 
 
-isABuoy <- c()
+#isABuoy <- c()
 #1:(nrow(buoyLocationsFixed))
 for(k in 1:(nrow(buoyLocationsFixed))){
   
@@ -46,7 +46,7 @@ for(k in 1:(nrow(buoyLocationsFixed))){
           }
           
           if(class(data) != "try-error"){
-            isABuoy <- c(isABuoy, buoyLocationsFixed$BuoyNumber[k])
+            #isABuoy <- c(isABuoy, buoyLocationsFixed$BuoyNumber[k])
             notFoundDataYet <- FALSE
           }
         
@@ -62,12 +62,12 @@ for(k in 1:(nrow(buoyLocationsFixed))){
 ```{r}
 
 #save so we don't lose it
-dput(isABuoy, "isABuoy.txt")
+#dput(isABuoy, "isABuoy.txt")
 
 
-buoyLocationsFixed <- buoyLocationsFixed %>% filter(BuoyNumber %in% isABuoy)
+#buoyLocationsFixed <- buoyLocationsFixed %>% filter(BuoyNumber %in% isABuoy)
 
-dput(buoyLocationsFixed, "buoyLocationsFixed.txt")
+#dput(buoyLocationsFixed, "buoyLocationsFixed.txt")
 
 
 ```
