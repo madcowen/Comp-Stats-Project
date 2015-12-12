@@ -43,7 +43,7 @@ stormsWithBuoyData <- left_join(completeWeightedMeans2, stormsNorthAtl, by = "ro
 
 # keep variables we want to use and that are not predominately NAs
 # change wind_wmo to categorical variables
-stormsWithBuoyData <- stormsWithBuoyData %>% 
+stormsWithBuoyDataCat <- stormsWithBuoyData %>% 
   dplyr::select(WD, WSPD, GST, WVHT, APD, BAR, ATMP, WTMP, Wind_WMO) %>%
   mutate(hurricaneCat = 
            ifelse(Wind_WMO <= 33, "TD",
