@@ -640,40 +640,146 @@ head(stormsWithBuoyData, 4)
 
 ```
 
-```{r, eval= FALSE}
-#run 1
-#when stopped k was 2562 dim(weightedMeans) was 738 14
-#got errors see below (seems couldn't pull in some buoy data, bad pages for those?)
 
-# preliminary weighted means
-#dput(weightedMeans, "prelimWeightedMeans.txt")
-#prelimWeightedMeans <- dget("prelimWeightedMeans.txt")
-```
+### Assessing Data (Neural Networks and Trees)
 
-```{r , eval= FALSE}
-# did get 41 warning messages, but were not able to see what they were
-#dput(weightedMeans, "completeWeightedMeans.txt")
-#completeWeightedMeans <- dget("completeWeightedMeans.txt")
+
+
+```{r, message = FALSE}
+
+require(neuralnet)
+require(dplyr)
+require(tree)
+require(randomForest)
+require(ggplot2)
 
 ```
 
 
-```{r,  eval= FALSE}
-# ran full loop again, only got 2 warning messages (In file(file, "rt") :
-#unable to connect to 'www.ndbc.noaa.gov' on port 80.)
-#dput(weightedMeans, "completeWeightedMeans2.txt")
-#completeWeightedMeans2 <- dget("completeWeightedMeans2.txt")
+```{r}
 
-#2 datasets slightly different
-#all.equal(completeWeightedMeans, completeWeightedMeans2)
+# take a look at the compiled dataset, look for NAs
+summary(stormsWithBuoyData)
 
+# keep variables we want to use and that are not predominately NAs
+stormsWithBuoyData.nn <- stormsWithBuoyData %>% 
+  dplyr::select(WD, WSPD, GST, WVHT, APD, BAR, ATMP, WTMP, Wind_WMO)
 
-#system print out of times
-#"2015-12-06 11:04:27 PST"  #start of loop for StormsAndBuoysData
-#"2015-12-06 23:01:57 PST"
-```
+# find which rows have missing data of the variables we kept
+rowLabs <- seq(1:nrow(stormsWithBuoyData.nn))
+rowLabs <- rowLabs[rowSums(is.na(stormsWithBuoyData.nn)) > 0]
 
+# take out all the rows with missing data
+stormsWithBuoyData.nn <- stormsWithBuoyData.nn[-rowLabs,]
+
+## normalize the variables to between 0,1
+
+# min of each variables
+mins <- apply(stormsWithBuoyData.nn, 2, min)
+
+# max of each variable
+maxs <- apply(stormsWithBuoyData.nn, 2, max)
+
+# look at the data
+summary(stormsWithBuoyData.nn)
   
-PROBLEMS TO ADDRESS:
-1. Check over formatting -- seems like loops are not indented properly 
+# normalize the data
+stormsWithBuoyData.nn<-stormsWithBuoyData.nn %>% scale(center = mins, scale = maxs - mins)
+
+# reformat into data frame
+stormsWithBuoyData.nn <- as.data.frame(stormsWithBuoyData.nn)
+
+# set the seed
+set.seed(8)
+
+# split in 3/4 training and 1/4 test
+trainStormID <- sample(1:nrow(stormsWithBuoyData.nn),
+ round(0.75*nrow(stormsWithBuoyData.nn)))
+
+# training data
+trainingStorms <- stormsWithBuoyData.nn[trainStormID,]
+
+# testing data 
+testingStorms <- stormsWithBuoyData.nn[-trainStormID,]
+
+
+# try a neural net with 2 nodes for the one hidden layer
+net.storms <- neuralnet(Wind_WMO ~ WD + WSPD + GST + WVHT + APD + BAR + ATMP + WTMP,
+                        trainingStorms, hidden = 2)
+
+# look at what the neural net looks like 
+print(net.storms)
+plot(net.storms)
+
+# calculate test error rate
+results <- compute(net.storms, testingStorms[, 1:8])$net.result[,1]
+
+# MSE 
+MSE <- sum((testingStorms$Wind_WMO - results)^2)/nrow(testingStorms)
+MSE
+
+# compare predicted wind to actual 
+plot(testingStorms$Wind_WMO, results ,col='blue',main='Predicted vs Real', xlab = "Real Wind WMO", ylab = "Predicted Wind WMO")
+abline(0,1,lwd=2)
+
+
+```
+
+
+
+
+
+
+```{r}
+
+# set the seed
+set.seed(8)
+
+## CART
+
+# curious to see what variables split on
+stormTree <- tree(Wind_WMO ~ WD + WSPD + GST + WVHT + APD + BAR + ATMP + WTMP,
+                  data= trainingStorms)
+
+
+plot(stormTree) ; text(stormTree)
+
+## fit data with random forest to compare to neural net
+
+# run nested for loops to determine what values of mtry and ntree to use
+sizeM <- seq(1,(ncol(trainingStorms)-1), by=1)
+numTrees<- seq(20,500, by = 20)
+
+error.rf <- c()
+mtrys <- c()
+ntrees <- c()
+
+
+
+for(i in 1:length(sizeM)){
+  for(j in 1:length(numTrees)){
+    
+    storm.rf <- randomForest(Wind_WMO ~., data = trainingStorms, mtry=sizeM[i],     
+                               ntree=numTrees[j])
+    yhat.rf <- predict(storm.rf, newdata = testingStorms)
+    error.rf <- c(error.rf,sum((yhat.rf - testingStorms$Wind_WMO)^2))
+    mtrys <- c(mtrys,sizeM[i])
+    ntrees <- c(ntrees,numTrees[j])
+  }
+}
+
+#make dataframe of error rate, mtry and ntree values
+output.rf <- data.frame(error=error.rf,mtry=as.factor(mtrys), ntree=ntrees)
+
+#plot results to decide which values mtry and ntree to use
+output.rf %>% ggplot(aes(x=ntree, y=error, color = mtry, lty = mtry)) +
+  geom_line() + geom_point()+ 
+  xlab("Number of Trees") + ylab("Test Error Rate") 
+
+
+
+
+```
+
+
 
