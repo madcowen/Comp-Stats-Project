@@ -13,7 +13,9 @@ shinyUI(fluidPage(
       selectInput("var", 
                   label = "Choose a variable to display",
                   choices = c("Wind", "Air Temp",
-                              "Water Temp", "Waveheight"),
+                              "Water Temp", "Waveheight", "Wind Direction",
+                              "Wind Speed", "Gust", "Average Wave Period", 
+                              "Dominant Wave Period", "Pressure"),
                   selected = "Wind"),
       
       sliderInput("year", 
