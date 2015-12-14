@@ -684,7 +684,7 @@ maxs <- apply(stormsWithBuoyData.nn, 2, max)
 
 # look at the data
 summary(stormsWithBuoyData.nn)
-  
+
 # normalize the data
 stormsWithBuoyData.nn<-stormsWithBuoyData.nn %>% scale(center = mins, scale = maxs - mins)
 
@@ -703,7 +703,6 @@ trainingStorms <- stormsWithBuoyData.nn[trainStormID,]
 
 # testing data 
 testingStorms <- stormsWithBuoyData.nn[-trainStormID,]
-
 
 # try a neural net with 2 nodes for the one hidden layer
 net.storms <- neuralnet(Wind_WMO ~ WD + WSPD + GST + WVHT + APD + BAR + ATMP + WTMP,
