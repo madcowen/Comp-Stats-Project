@@ -655,6 +655,8 @@ require(ggplot2)
 
 ```
 
+The variables we were looking at 
+
 
 ```{r}
 
@@ -707,6 +709,7 @@ testingStorms <- stormsWithBuoyData.nn[-trainStormID,]
 net.storms <- neuralnet(Wind_WMO ~ WD + WSPD + GST + WVHT + APD + BAR + ATMP + WTMP,
                         trainingStorms, hidden = 2)
 
+
 # look at what the neural net looks like 
 print(net.storms)
 plot(net.storms)
@@ -730,19 +733,10 @@ abline(0,1,lwd=2)
 
 
 
-```{r}
+```{r, cache = TRUE}
 
 # set the seed
 set.seed(8)
-
-## CART
-
-# curious to see what variables split on
-stormTree <- tree(Wind_WMO ~ WD + WSPD + GST + WVHT + APD + BAR + ATMP + WTMP,
-                  data= trainingStorms)
-
-
-plot(stormTree) ; text(stormTree)
 
 ## fit data with random forest to compare to neural net
 
@@ -771,15 +765,42 @@ for(i in 1:length(sizeM)){
 #make dataframe of error rate, mtry and ntree values
 output.rf <- data.frame(error=error.rf,mtry=as.factor(mtrys), ntree=ntrees)
 
-#plot results to decide which values mtry and ntree to use
-output.rf %>% ggplot(aes(x=ntree, y=error, color = mtry, lty = mtry)) +
-  geom_line() + geom_point()+ 
-  xlab("Number of Trees") + ylab("Test Error Rate") 
-
-
-
+# save data for use later
+dput(output.rf, "output.txt")
 
 ```
 
 
+```{r}
 
+# plot to determine which parmeters to use
+output.rf <- dget("output.txt")
+#plot results to decide which values mtry and ntree to use
+output.rf %>% ggplot(aes(x=ntree, y=error, color = mtry, lty = mtry)) +
+  geom_line() + geom_point()+ 
+  xlab("Number of Trees") + ylab("Test Error Rate") +
+  ggtitle("Test Error Rate for Different Parameter Values")
+
+
+# make model with parameters ntree = 250, mtry = 6
+set.seed(47)
+
+storm.model.rf <- randomForest(Wind_WMO ~., data = trainingStorms,
+                               mtry = 6, ntree = 250, importance = TRUE)
+
+storm.model.rf
+
+# find test error
+yhat.model.rf <- predict(storm.model.rf, newdata = testingStorms)
+error.model.rf <- sum((yhat.model.rf - testingStorms$Wind_WMO)^2)
+error.model.rf
+
+
+# see which variables are important
+
+varImpPlot(storm.model.rf, main = "Variable Importance")
+
+
+```
+
+From the random forest model with the parameters of number of predictors (mtry) of 6 and number of trees (ntree) of 250, the test error rate was `r round(error.model.rf, 3)` %.  From the variable importance plot, we can see that WVHT (wave height) is most important for decreasing MSE and increasing node purity.  The next two important variables are WTMP (wave temp) and APD (average wave period).   

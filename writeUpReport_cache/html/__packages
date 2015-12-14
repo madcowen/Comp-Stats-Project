@@ -1,0 +1,12 @@
+base
+dplyr
+tidyr
+sp
+geosphere
+lubridate
+XML
+MASS
+neuralnet
+tree
+randomForest
+ggplot2
