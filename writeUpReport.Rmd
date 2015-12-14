@@ -640,6 +640,33 @@ head(stormsWithBuoyData, 4)
 
 ```
 
+The output shown above is the final combination of the storms and buoys data.  As desired, each row represents one location of a storm at a specific time.  Variables measured by buoys within 500 km have been averaged (and weighted by distance) to produce a value for each buoy variable.  The variables shown, their source (NOAA buoy data or IBTrACS storms data), and their units, are:
+
+- WD (wind direction); buoy data; degrees clockwise from true North
+- WSPD (wind speed); buoy data; m/s averaged over 8 minute period
+- GST (gust); buoy data; peak 5 or 8 second gust speed in m/s measured during the 8 min period
+- WVHT (wave height); buoy data; meters
+- DPD (dominant wave period); buoy data; seconds
+- APD (average wave period); buoy data; seconds
+- MWD (measurement of wave direction); buoy data; degrees from true north, increasing clockwise
+- BAR (sea level pressure); buoy data; hecto-Pascals (hPa)
+- ATMP (air temperature); buoy data; degrees Celsius
+- WTMP (water temperature); buoy data; degrees Celsius
+- DEWP (dewpoint); buoy data; degrees Celsius
+- VIS (visibility); buoy data; nautical miles
+- TIDE (water level above or below 'mean lower low water'); buoy data; feet
+- rowNum (row number); created variable that numbered the rows in the storms from which our weighted means were calculated so we could later join the weighted average buoy measurements with the original storm rows
+- Basin (categorical variable for ocean basin); storm data; we only look at Basin = NA (North Atlantic)
+- Serial_Num (storm serial number); storm data; unique identification for each storm to link all rows belonging to that storm
+- Latitude; storm data; degrees (positive if above equator, negative if below)
+- Longitude; storm data; degrees (positive if East of prime meridian, negative if West)
+- time; storm data; time and date information from the storms data
+- Wind_WMO (maximum sustained wind gust); storms data; knots
+- Wind\_WMO\_perc (percentile of maximum sustained wind gust); storms data; percentile (in relation to all the maximum sustained wind gusts in the column)
+- BasinChar (character string for ocean basin); storms data; variable we created to ensure basin names were in character string format
+
+The goal of our project is to assess the ability of the variables measured by the buoys to estimate the maximum sustained wind gust (Wind\_WMO) in each storm row.  To do so, we will build two models with these variables as the predictors and Wind\_WMO as the response.
+
 
 ### Assessing Data (Neural Networks and Trees)
 
