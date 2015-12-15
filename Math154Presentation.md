@@ -1,45 +1,57 @@
 The Brain of the Storm: Using neural networks to predict hurricane severity
 ========================================================
 author: Maddi Cowen, Ciaran Evans, and Samantha Morrison  
-date: 
+date:
 
-Background
+
+
+Data Collection
 ========================================================
-
-For more details on authoring R presentations click the
-**Help** button on the toolbar.
-
-- Bullet 1
-- Bullet 2
-- Bullet 3
-
-Slide With Code
+- Goal: combine information from North Atlantic storms with meteorological data from buoys.
+- Data Sources
+  - Storms: NOAA Best Track Archive for Climate Stewardship (IBTrACS)
+  - Buoys: NOAA National Data Buoy Center (NDBC)
+  
+Storms Data
 ========================================================
+![](stormByYearIBTrACS.PNG)
 
+- CSV data for storms in each year on IBTrACS website
+- Records back to late 1800's; we are interested in 2000 - 2015
 
-```r
-summary(cars)
-```
-
-```
-     speed           dist       
- Min.   : 4.0   Min.   :  2.00  
- 1st Qu.:12.0   1st Qu.: 26.00  
- Median :15.0   Median : 36.00  
- Mean   :15.4   Mean   : 42.98  
- 3rd Qu.:19.0   3rd Qu.: 56.00  
- Max.   :25.0   Max.   :120.00  
-```
-
-Slide With Plot
+Storms Data
 ========================================================
+- Each row in the CSV files is an observation in space and time
+- Variables for location, time, windspeed, and identification
 
-![plot of chunk unnamed-chunk-2](Math154Presentation-figure/unnamed-chunk-2-1.png) 
+![](stormCSV2015.PNG)
+
+Gathering Storms Data
+========================================================
+- Download CSV files for years 2000 - 2015 from IBTrACS
+- Filter to choose rows with Basin = " NA" (North Atlantic)
+
+NOAA Buoy Data
+========================================================
+List of all NOAA observation stations:
+
+![](noaaBuoyList.JPG)
+
+NOAA Buoy Data
+========================================================
+Historical standard meteorological data:
+
+![](buoy41046_2007data.JPG)
+
+Matching Storms and Buoys
+========================================================
+- Want to match storm observations with nearby buoys
+- Will use the location and date-time of storm observations to match
+
 
 Neural Networks- Perceptron
 ========================================================
 
-Perceptron
 ![](simpleperceptron.PNG)
 
 -takes binary inputs $(x_1, x_2, x_3)$ and gives one binary output
@@ -157,47 +169,146 @@ Neural Networks- handwriting example cont
 -use *cost function*:  $C(w,b) \equiv \frac{1}{2n} \sum \limits_{x} || y(x) -a ||^2$  
 $w$ weights; $b$ biases; $n$ # training inputs; $a$ predicted outputs  
 -want to minimize cost
+http://neuralnetworksanddeeplearning.com/chap1.html
 
 
-Data Collection
+Neural Networks- gradient descent algorithm
 ========================================================
-- Goal: combine information from North Atlantic storms with meteorological data from buoys.
-- Data Sources
-  - Storms: NOAA Best Track Archive for Climate Stewardship (IBTrACS)
-  - Buoys: NOAA National Data Buoy Center (NDBC)
-  
-Storms Data
+
+-to determine how to minimize the cost function, use *gradient descent algorithm*  
+-say we want to minimize C(v), cost as a function of v  
+$\Delta C \approx \nabla C \cdot \Delta v$  
+$\Delta v = -\eta \nabla C$  
+$\Delta C \approx \nabla C \cdot \Delta v = - \eta || \nabla C || ^2$  
+
+where $\eta$ is the learning rate
+
+-this gives a negative $\Delta C$ 
+-we move in the direction of the gradient, updating at each step  
+-ideally this will bring us to the global minimum of the cost function
+http://neuralnetworksanddeeplearning.com/chap1.html
+
+
+NN- variable selection problems
 ========================================================
-![](stormByYearIBTrACS.PNG)
 
-- CSV data for storms in each year on IBTrACS website
-- Records back to late 1800's; we are interested in 2000 - 2015
+redundancy: 
+-increases number of local optima in error function (i.e. local minima in cost function)  
+-training slower: harder to map relationship b/w redundant variables and error  
 
-Storms Data
+irrelevant variables:  
+-add noise  
+-could mask important relationships  
+
+dimensionality:
+-as dim of model increases linearly, exponential increase in sample size needed   
+
+-many input variable selection algorithms
+http://cdn.intechopen.com/pdfs-wm/14882.pdf
+
+
+Neural Networks- Storms and Buoy Data
 ========================================================
-- Each row in the CSV files is an observation in space and time
-- Variables for location, time, windspeed, and identification
 
-![](stormCSV2015.PNG)
+-remove variables: 
+Dew point, tide, visibility, measurement of wave direction, dominant wave pressure (redundant)
 
-Gathering Storms Data
+-removed rows with NAs  
+
+-normalized the data between 0, 1
+
+-split into 3/4 training, 1/4 test  
+
+Neural Networks- Variables Used
 ========================================================
-- Download CSV files for years 2000 - 2015 from IBTrACS
-- Filter to choose rows with Basin = " NA" (North Atlantic)
 
-NOAA Buoy Data
+- **WD** (wind direction);degrees clockwise from true North
+- **WSPD** (wind speed); m/s averaged over 8 minute period
+- **GST** (gust); peak 5 or 8 second gust speed in m/s measured during the 8 min period
+- **WVHT** (wave height); meters
+- **APD** (average wave period); seconds
+- **BAR** (sea level pressure); hecto-Pascals (hPa)
+- **ATMP** (air temperature); degrees Celsius
+- **WTMP** (water temperature); degrees Celsius
+- **Wind_WMO** (maximum sustained wind gust); knots
+
+
+Neural Networks- Storms and Buoy Data
 ========================================================
-List of all NOAA observation stations:
 
-![](noaaBuoyList.JPG)
 
-NOAA Buoy Data
+```r
+# try a neural net with 2 nodes for the one hidden layer
+net.storms <- neuralnet(Wind_WMO ~ WD + WSPD + GST + WVHT + APD + BAR + ATMP + WTMP,
+                        trainingStorms, hidden = 2)
+
+
+# calculate test error rate
+results <- compute(net.storms, testingStorms[, 1:8])$net.result[,1]
+
+# MSE 
+MSE <- sum((testingStorms$Wind_WMO - results)^2)/nrow(testingStorms)
+```
+
+MSE = 0.0154  
+
+
+Neural Networks- Storms and Buoy Data
 ========================================================
-Historical standard meteorological data:
 
-![](buoy41046_2007data.JPG)
+![](NNplot.png)
 
-Matching Storms and Buoys
+
+Neural Networks- Storms and Buoy Data
 ========================================================
-- Want to match storm observations with nearby buoys
-- Will use the location and date-time of storm observations to match
+
+![](NNpredicted.png)
+
+
+
+Random Forest- Storms and Buoy Data
+========================================================
+
+
+
+![plot of chunk unnamed-chunk-4](Math154Presentation-figure/unnamed-chunk-4-1.png) 
+
+
+
+Random Forest- Storms and Buoy Data
+========================================================
+
+
+```r
+# make model with parameters ntree = 250, mtry = 6
+set.seed(47)
+
+storm.model.rf <- randomForest(Wind_WMO ~., data = trainingStorms,
+                               mtry = 6, ntree = 250, importance = TRUE)
+```
+
+training MSE = 0.0138  
+test MSE = 0.0140
+
+
+Random Forest- Storms and Buoy Data
+========================================================
+
+![](variableimportance.png)
+
+
+
+
+Shiny App- Storms and Buoy Data
+========================================================
+
+
+[http://rstudio.campus.pomona.edu:3838/cle02012/StormsAndBuoys/](http://rstudio.campus.pomona.edu:3838/cle02012/StormsAndBuoys/)
+
+![](shinyStorms.PNG)
+
+Conclusions
+========================================================
+
+-variables given do not seem to give enough info to predict Wind_WMO well  
+-potential redundancy in variables, problem for NN
