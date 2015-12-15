@@ -725,10 +725,119 @@ The goal of our project is to assess the ability of the variables measured by th
 
 ### Assessing Data (Neural Networks and Trees)
 
-We were interested in seeing how Neural Networks could perform on our data.  Neural networks have been used for analyzing complex problems involving pattern recognition.  We were curious how neural networks could perform on our data, given that many of the variables were likely correlated.
+Here we will give a brief overview of the ideas behind neural networks and how they work.  The most basic neuron is a perceptron which takes binary inputs $(x_1, x_2, x_3)$ and gives one binary output (figures from [http://neuralnetworksanddeeplearning.com/chap1.html](http://neuralnetworksanddeeplearning.com/chap1.html)).  
+
+![](simpleperceptron.PNG)
+A Simple Perceptron.
+
+To determine what the output of the perceptron is, each input is given a weight $(w_1, w_2, w_3)$ and the output 0,1 of the perceptron is based on whether $\Sigma_j{ w_jx_j}$ is above or below a *threshold value*.
+
+
+The decision rule for the output can be described as follows:
+
+denote:  
+$w\cdot x = \Sigma_j{ w_jx_j}$  
+$bias\equiv -$ threshold
+
+The the decision rule for the output is as follows:
+$output=\{^{0\text{ } if\text{ }  w\cdot x \text{ }  + \text{ } b\text{ }  \le\text{ }  0}_{1\text{ } if\text{ } w\cdot x \text{ }  + \text{ } b\text{ }  > \text{ }  0}$
+
+
+Thus we can see, when bias is large and positive, it is "easier" to get and output of 1 and when bias is negative, it is "harder" to get and output of 1.  
+
+These perceptrons can be combined into layer, where the premise is they are meant to be a basic model of "human decision making".  In this figure below, the first layer of perceptrons makes 3 decisions, which are then fed into the second layer of perceptrons, when then give an output.  This allows for complex decisions to be made since each perceptron in the second layer takes inputs from several first layer perceptrons.
+
+![](complexperceptrons.PNG)
+
+Note that is this image, each perceptron only gives one output.  The multiple lines from a signal perceptron indicate that the second layer perceptron takes in multiple inputs.
+
+
+These neural networks then use *learning algorithms* which tune the weights and biases for the inputs.  In learning, ideally we would want small changes in the weights and biases to result in small changes in the output.  This way input that were correctly classified would remain correctly classified and the tuning of the weights and biases could fix those input that were not correctly classified.  Neural networks makes these small changes iteratively to improve the network overall.
+
+However, this process does not work with perceptrons, so insead we use a *sigmoid* neuron.  Sigmoid neurons are much like perceptrons except the inputs $(x_1, x_2, x_3)$ are continuous between 0 and 1.  Also the outputs are not binary, instead $ouput = \sigma(w\cdot x + b)$.
+
+Where
+$\sigma$ is a sigmoid function  
+$\sigma (z) \equiv \frac{1}{1 + e^{-z}}$
+
+Thus, the output can be written as:
+$ouput = \frac{1}{1 + \exp{(-\Sigma_j{ w_jx_j-b})}}$
+
+Denote:
+$z \equiv w\cdot x + b$  
+
+When z is large and positive, the exponent is ~ 0 so $\sigma(z) \approx 1$.  And when z is large and negative it is approx 0.  Thus, we can see at when z is large, it acts similarly to the binary perceptron.
+
+In fact the sigmoid function is the reason why we need to use *sigmoid* neurons instead of *perceptrons*.  Perceptrons are a step function, so that small changes in weights and biases do not give small changes in the output.  The sigmoid function (see below) is a smoothed out step function and these smoothing results in small changes in weigths and biases giving small changes in output.
+
+
+```{r, echo=FALSE, fig.height = 5, fig,width=5}
+# function needed for visualization purposes
+sigmoid = function(params, x) {
+  params[1] / (1 + exp(-params[2] * (x - params[3])))
+}
+
+x = 1:53
+y = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0.1,0.18,0.18,0.18,0.33,0.33,0.33,0.33,0.41,
+  0.41,0.41,0.41,0.41,0.41,0.5,0.5,0.5,0.5,0.68,0.58,0.58,0.68,0.83,0.83,0.83,
+  0.74,0.74,0.74,0.83,0.83,0.9,0.9,0.9,1,1,1,1,1,1,1)
+
+# fitting code
+fitmodel <- nls(y~a/(1 + exp(-b * (x-c))), start=list(a=1,b=.5,c=25))
+
+# visualization code
+# get the coefficients using the coef function
+params=coef(fitmodel)
+
+y2 <- sigmoid(params,x)
+plot(y2,type="l", axes=FALSE, frame.plot = TRUE, xlab= "Z", ylab="")
+
+```
+
+Figure of the shape of a sigmoid function.
+
+
+Thus, with the sigmoid function, changes in the output are a linear function of teh changes in weights and biases.
+
+$\Delta output \approx \Sigma_j{\frac{\partial output}{\partial w_j} \Delta w_j + \frac{\partial output}{\partial b} \Delta b}$  
+
+
+The general set up of neural networks are that they are made up of sigmoid neurons and have a input layer, hidden layer(s), and output layer (see below).
+
+![multilayer network](MLP.PNG)
+
+
+Next, we wonder how do we train and learn a neural network.  We use a cost function, often MSE, that is a function of the weights and biases.  To minimize cost, we use a *gradient descent algorithm*.  
+
+Say we want to minimize $C(v)$ where cost is a function of the vector v.
+
+$\Delta C \approx \nabla C \cdot \Delta v$ 
+
+We minimize by making $\Delta v$:
+
+$\Delta v = -\eta \nabla C$ 
+
+Thus,
+
+$\Delta C \approx \nabla C \cdot \Delta v = - \eta || \nabla C || ^2$  
+
+where $\eta$ is the learning rate
+
+Thus function always gives a negative $\Delta C$ as desired.  The main concept is that we move opposite the direction of the gradient and update at each step to recalculate the gradient.  Ideally this descent algorithm brings us to the global minimum of the cost function.
+
+Information and figure on neural networks came from this reference [http://neuralnetworksanddeeplearning.com/chap1.html](http://neuralnetworksanddeeplearning.com/chap1.html), in which you can find further information on neural networks and a tutorial using a handwriting example and code in Python.
+
+
+
+
+We were interested in seeing how Neural Networks could perform on our data since neural networks have been used for analyzing complex problems involving pattern recognition.  We were also curious how neural networks could perform on our data, given that many of the variables were likely correlated.
 
 It has been found that redundancy in input variable selection can be a problem in neural networks since it can result in more local optima for the error function.  Thus, we will also be comparing our results to random forests which deal with variable correlation and interaction well [http://cdn.intechopen.com/pdfs-wm/14882.pdf](http://cdn.intechopen.com/pdfs-wm/14882.pdf).  
 
+
+There are many potential issue with neural network input variable selection problems (which were not tuned for in our model since we wanted to compare its performance with potentialy redundant variables with the performance of random forests).
+
+With neural networks, input variables that are redundant can increase the number of local optima in the error function, thus making it more likely you find a local minima instead of the global minima.  They also slow down the training because it can be difficult to map the relationship between redundant variables and error.  Irrelevant variables can add noise to the model and mask important relationships in the model.  Also, the dimensionality of neural networks cause problems.  As the dimension of the model increases linearly, there is an exponential increase in the sample size.  There have been studies on various input selection algorithms, which can be incorporated into building the neural network or can be undertaken beforehand.  The package we used does not seem to use any input selection algorithms, but in future work the use of input variable selection algorithm and comparison of different types of them would be interesting.
 
 The "neuralnet" package, available on CRAN, allows us to build neural networks in R.  The reference manual can be found at [https://cran.r-project.org/web/packages/neuralnet/neuralnet.pdf](https://cran.r-project.org/web/packages/neuralnet/neuralnet.pdf), and on the package by its authors can be found at [https://journal.r-project.org/archive/2010-1/RJournal_2010-1_Guenther+Fritsch.pdf](https://journal.r-project.org/archive/2010-1/RJournal_2010-1_Guenther+Fritsch.pdf).  This paper provides a helpful review of the basics of neural networks and of the way in which they are implemented in the neuralnet package.  The following summary of the package functionality comes from this paper. Neural networks built using this package are feed-forward networks (information flows from perceptrons in one layer to the next and does not flow backwards).  The input layer consists of a node for each explanatory variable, and the output layer is made up of nodes representing the response.  The defaults in this package (though all of these can be changed at the user's discretion) are to use one hidden layer, to use SSE (which is equivalent to using MSE) as the cost function, to use resilitent backpropogation to find the local minimum of the cost function, and to use the logistic function ($f(x) = \frac{1}{1 + e^{-x}}$) as the activation function.  Standard backpropogation is simply another name for gradient descent; resilient backpropogation allows for fine-tuning of the gradient descent algorithm by providing for different learning rates for each weight (as opposed to one learning rate for all weights, as in standard backpropogation).  Using these defaults, we will build a neural network to predict the maximum wind gust (Wind\_WMO) of each storm row from the buoy measurements matched to that row.
 
@@ -960,9 +1069,21 @@ Our data were not randomly selected; in fact, our observations (a storm at a poi
 
 A point to note is that our models attempt to predict storm severity based on buoy data, weighted by how nearby the buoy is. This means that we are predicting storm severity every time there is a storm at a particular location. This does not mean that we are predicting that certain environmental conditions lead to a storm of a certain severity; it means that there must already be a storm, but then the conditions will be correlated with a certain severity. This limits the value of using buoys as a means of assessing storm severity, too, because most buoys are close to shore and thus we would not have a lot of warning about storm severity. 
 
-Our choice of modelling technique further restricted the amount of data we could use in our model. We first built a neural network, which requires all observations to have complete information for every variable. Thus, we had to remove rows with missing data to run the neural networks. This meant removing __ [insert how long rowLabs is] observations. We additionally scaled our data to run the neural networks, and we were able to use this same data for building our random forests because scaling data does not change the shape of trees generated based on the data. 
+Our choice of modelling technique further restricted the amount of data we could use in our model. We first built a neural network, which requires all observations to have complete information for every variable. Thus, we had to remove rows with missing data to run the neural networks. This meant removing `r length(rowLabs)` observations. We additionally scaled our data to run the neural networks, and we were able to use this same data for building our random forests because scaling data does not change the shape of trees generated based on the data. 
 
-Our models predict well for storm wind speeds that are tropical storms/depressions or Category 1 ( insert figure of error for neural network). This is probably because these storms dominated the data sets (more intense storms are rarer) and thus the vast majority of the observations used to train the data were from these low-category storms. Additionally, larger storms often occur toward the middle of the ocean, farther from land masses, where there are not as many buoys.
+Our models predict well for storm wind speeds that are tropical storms/depressions or Category 1 (low values of Wind_WMO)
+
+```{r}
+
+# compare predicted wind to actual 
+plot(testingStorms$Wind_WMO, results ,col='blue',main='Predicted vs Real', xlab = "Real Wind WMO", ylab = "Predicted Wind WMO")
+abline(0,1,lwd=2)
+
+
+```
+
+
+This is probably because these storms dominated the data sets (more intense storms are rarer) and thus the vast majority of the observations used to train the data were from these low-category storms. Additionally, larger storms often occur toward the middle of the ocean, farther from land masses, where there are not as many buoys.
 
 As previously stated, our prediction applies to storms (mostly close to shore) in the North Atlantic basin. We hope that they would generalize to storms in other basins, but it would be best to extend our model to those basins. Our code has the potential to load this data, but due to time constraints, we were not able to pull in this data for analysis. If we had more processing time and/or computational power, perhaps by running our for loops with parallel processing, then we could study other basins and other years. We could use our model to test data from other years and other basins. 
 
