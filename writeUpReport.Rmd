@@ -5,6 +5,18 @@ date: "12/4/2015"
 output: html_document
 ---
 
+##Introduction
+
+The National Oceanographic and Atmospheric Administration (NOAA) is a federal agency that is responsible for overseeing information and research related to the ocean and weather.  Some of the [research and services](http://www.noaa.gov/about-noaa.html) they perform in the atmospheric realm include weather and storm forecasting.  To aid the National Weather Service (a subdivision of NOAA) in forecasting and assessing previous forecasts, NOAA runs the [National Data Buoy Center](http://www.ndbc.noaa.gov/tour/virtr1.shtml ) which operates an array of buoys and observation stations situated along the coasts of the United States and scattered throughout the oceans.  These buoys collect ocean and atmospheric data for use in prediction, modelling, and assessment, and the data for all buoys and stations can be found online at the [NDBC website](http://www.ndbc.noaa.gov/tour/virtr1.shtml).
+
+Separately, NOAA also controls the National Climatic Data Center, which contains the [International Best Track Archive for Climate Stewardship](https://www.ncdc.noaa.gov/ibtracs/) (IBTrACS).  This archive maintains data on cyclones around the globe, with [records](https://www.ncdc.noaa.gov/ibtracs/index.php?name=browse ) dating back to 1842.  All data is available at the IBTrACS website, and comes from data collected by organizations and agencies all over the world.
+
+Recently, Hurricane Patricia proved to be the strongest hurricane [ever recorded](http://www.weather.com/safety/hurricane/news/hurricane-patricia-mexico-no-deaths), and although it fortunately caused no deaths and less destruction than anticipated, it serves as an important reminder of the importance of monitoring weather.  As storms like Patricia threaten coastal communities each year, studying and understanding atmospheric conditions is a crucial field.  For this reason, we are interested in the ability of NOAA buoys to estimate the severity of nearby storms, to see how well buoy measurements can be used in measuring storm parameters.
+
+Currently, a wide range of technology is used to measure storm winds (see [this](http://webcache.googleusercontent.com/search?q=cache:yUnCRsmeHooJ:https://www.wmo.int/pages/prog/drr/projects/Thematic/HazardRisk/2013-04-TechWks/Documents/TCs/TropicalCycloneProg/Tropical_Cyclones_v1.0.docx+&cd=1&hl=en&ct=clnk&gl=us) report from the World Meteorological Organization (WMO) for the information in this paragraph).  These include radar and remote sensing technologies as well as measuring devices on aircraft, buoys, and ships.  Information gathered by buoys contributes to storm measurements, but plays a small role, especially as there are large stretches of water which do not contain buoys.  We are interested in evaluating the ability of buoy measurements by themselves to estimate nearby sustained winds.
+
+To do so, we will gather IBTrACS data on storms in the North Atlantic and combine it with buoy data from the NBDC.  Each row in the IBTrACS data is a location in space and time, and contains a measured windspeed.  We will match each row with nearby NOAA buoys, which have a variety of oceanic and atmospheric measurements including wind measurements, and see how well the buoy measurements at that time can estimate the storm windspeed.  Estimation will be attempted using neural networks and random forests, and we will investigate the ability of these models to estimate sustained wind speed.
+
 ##Data Collection
 
 For our project, we are combining meteorological data with recorded storm observations in the North Atlantic.  To gather this data, we must scrape both storm data and meteorological data and then integrate these two datasets.  The storm data came from the NOAA [International Best Track Archive for Climate Stewardship](http://www.ncdc.noaa.gov/ibtracs/index.php?name=ibtracs-data) (IBTrACS) , and the meterological data comes from the NOAA [National Data Buoy Center](http://www.ndbc.noaa.gov/historical_data.shtml), where we are using historical standard meterological data collected by buoys.
@@ -670,19 +682,22 @@ The goal of our project is to assess the ability of the variables measured by th
 
 ### Assessing Data (Neural Networks and Trees)
 
+ADD A DESCRIPTION OF NEURAL NETWORKS
 
+The "neuralnet" package, available on CRAN, allows us to build neural networks in R.  The reference manual can be found at [https://cran.r-project.org/web/packages/neuralnet/neuralnet.pdf](https://cran.r-project.org/web/packages/neuralnet/neuralnet.pdf), and on the package by its authors can be found at [https://journal.r-project.org/archive/2010-1/RJournal_2010-1_Guenther+Fritsch.pdf](https://journal.r-project.org/archive/2010-1/RJournal_2010-1_Guenther+Fritsch.pdf).  This paper provides a helpful review of the basics of neural networks and of the way in which they are implemented in the neuralnet package.  The following summary of the package functionality comes from this paper. Neural networks built using this package are feed-forward networks (information flows from perceptrons in one layer to the next and does not flow backwards).  The input layer consists of a node for each explanatory variable, and the output layer is made up of nodes representing the response.  The defaults in this package (though all of these can be changed at the user's discretion) are to use one hidden layer, to use SSE (which is equivalent to using MSE) as the cost function, to use resilitent backpropogation to find the local minimum of the cost function, and to use the logistic function ($f(x) = \frac{1}{1 + e^{-x}}$) as the activation function.  Standard backpropogation is simply another name for gradient descent; resilient backpropogation allows for fine-tuning of the gradient descent algorithm by providing for different learning rates for each weight (as opposed to one learning rate for all weights, as in standard backpropogation).  Using these defaults, we will build a neural network to predict the maximum wind gust (Wind\_WMO) of each storm row from the buoy measurements matched to that row.
+
+We begin by requiring the relevant packages: neuralnet for neural networks, dplyr for data wrangling, random forest for random forests, and ggplot2 for visualization of results.
 
 ```{r, message = FALSE}
 
 require(neuralnet)
 require(dplyr)
-require(tree)
 require(randomForest)
 require(ggplot2)
 
 ```
 
-The variables we were looking at 
+To begin with, we need to remove missing data in order to build our neural network. As we can see in the summary of our data from before, several variables consist almost entirely of missing observations.  There is nothing we can really do with these variables, and so we remove them.  This gets rid of MWD, DEWP, VIS, and TIDE.  We also note that average wave period (APD) and dominant wave period (DPD) are closely related, so DPD is removed.  This leaves us with WD, WSPD, GST, WVHT, APD, BAR, ATMP, and WTMP as our explanatory variables, and Wind_WMO as our response.
 
 
 ```{r}
@@ -701,6 +716,11 @@ rowLabs <- rowLabs[rowSums(is.na(stormsWithBuoyData.nn)) > 0]
 # take out all the rows with missing data
 stormsWithBuoyData.nn <- stormsWithBuoyData.nn[-rowLabs,]
 
+```
+
+Next, we normalize the data so that it lies between 0 and 1, by subtracting the minimum of each variable and dividing by the difference between the maximum and the minimum.
+
+```{r}
 ## normalize the variables to between 0,1
 
 # min of each variables
@@ -718,6 +738,11 @@ stormsWithBuoyData.nn<-stormsWithBuoyData.nn %>% scale(center = mins, scale = ma
 # reformat into data frame
 stormsWithBuoyData.nn <- as.data.frame(stormsWithBuoyData.nn)
 
+```
+
+Having cleaned and normalized the data, we are ready to begin the model-building process.  To compare the results of the neural network and random forests, we will divide the data into a test set of 25% and a training set of 75%.  All models will be built on the training data, then evaluated on the test data.
+
+```{r}
 # set the seed
 set.seed(8)
 
@@ -731,15 +756,30 @@ trainingStorms <- stormsWithBuoyData.nn[trainStormID,]
 # testing data 
 testingStorms <- stormsWithBuoyData.nn[-trainStormID,]
 
+```
+
+Up until this point, we have prepared the data for use in both the neural network and for building a random forest. We now build the neural network.  As noted by the authors of the neuralnet package in [https://journal.r-project.org/archive/2010-1/RJournal_2010-1_Guenther+Fritsch.pdf](https://journal.r-project.org/archive/2010-1/RJournal_2010-1_Guenther+Fritsch.pdf), "one hidden layer is sufficient to model any piecewise continuous function." For this reason, and because the algorithm tends not to converge for our data with more hidden layers, we use one hidden layer when building our neural network. This hidden layer will have 2 neurons, as with more neurons we again run into convergence problems.  Because we are interested in predicting a continuous response variable, we need only one node in the output layer.
+
+```{r, cache=TRUE}
 # try a neural net with 2 nodes for the one hidden layer
 net.storms <- neuralnet(Wind_WMO ~ WD + WSPD + GST + WVHT + APD + BAR + ATMP + WTMP,
                         trainingStorms, hidden = 2)
+```
 
+INCLUDE SUMMARY OF RESULTS
 
+We can look at a diagram of the neural network.  The nodes on the left are the input nodes, representing the explanatory variables, the nodes in the middle are the two nodes of the hidden layer, and the node on the right is the output of the neural network. 
+
+```{r}
 # look at what the neural net looks like 
 print(net.storms)
 plot(net.storms)
 
+```
+
+We now use the compute() function to predict Wind_WMO for the training data, and calculate MSE for the predictions.
+
+```{r}
 # calculate test error rate
 results <- compute(net.storms, testingStorms[, 1:8])$net.result[,1]
 
@@ -818,7 +858,7 @@ storm.model.rf
 
 # find test error
 yhat.model.rf <- predict(storm.model.rf, newdata = testingStorms)
-error.model.rf <- sum((yhat.model.rf - testingStorms$Wind_WMO)^2)
+error.model.rf <- sum((yhat.model.rf - testingStorms$Wind_WMO)^2)/nrow(testingStorms)
 error.model.rf
 
 
