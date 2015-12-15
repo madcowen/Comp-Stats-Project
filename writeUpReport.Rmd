@@ -427,7 +427,48 @@ Now that we have a dataset *buoyLocationsFixed*  of all the buoys with their loc
 
 To integrate the storms and buoy data, we want take each row of the storms dataset (which is a storm at a time and location) and compute the average meterological conditions around the storm time/location as measured by buoys.
 
-ADD MORE DESCRIPTIONS LATER
+To do this we run a for loop over all the rows in the *stormsNorthAtl* dataset and find the set of buoys within 500 km of the storm location for that row.  We determine the weather variables (i.e. waveheight, air temp) of these buoys at the time (day month year hour) of this storm row, and we average these variables over all the buoys.
+
+
+We are going to walk you through the data collection of buoy data for one row of the *stormsNorthAtl* dataset, which is one loop of the for loop below.
+
+Let us call the first row in the *stormsNorthAtl* dataset StormRow1 which is in 2000.
+
+```{r}
+head(stormsNorthAtl,1)
+
+```
+
+
+First we find the year of StormRow1 (2000), and filter the *buoyLocations* dataset so that we only have buoys that contain historical data in that year.  Then we compute the distance of all these buoys to the latitude and longitude location of StormRow1.  We then filter by distance so we are left with the buoys that are within 500 km of StormRow1 location.  We pull out these buoy Numbers to feed into another loop to pull in the data for each of these buoys at the year of StormRow1 (in this case 2000).  
+
+To pull in the data for these buoys, call them Buoy1,..., BuoyN, near StormRow1 we enter another for loop.  Note that in pulling in the buoy data from the NOAA website we can run into errors such as 404 Error Not Found or port 80 connectivity issue.  This is likely due to problems with the R studio server connecting to the NOAA server.  To fix some of these issues, we used a try loop that tried to pull in data 10 times, but after 10 errors moved on to the next buoy.
+
+
+The first time through this loop, we pull in the buoy data for Buoy1 and clean it up to standardize it.  We need to standardize the resulting Buoy1 dataset because the NOAA buoy data between 2000 to 2004, 2005 to 2006, and 2007 to 2015 all had slightly different formats.  We standardized them to look like the data tables in 2000.  
+
+![](Buoy2004.PNG)
+Buoy Dataset Format 2000 to 2004.  
+
+![](Buoy2005.PNG)
+Buoy Dataset Format 2005 to 2006.  
+
+![](Buoy2007.PNG)
+Buoy Dataset Format 2007 to 2015. 
+
+Then we took the Buoy1 dataset and filtered by time of StormRow1 so that the only data left was Buoy1 data that was at the same year, month, day, hour as StormRow1.  We took this Buoy1 data and added on the buoy number to it and saved it in a vector matrix called matchingBuoys.
+
+We then pulled in the data for Buoy2, ..., BuoyN and cleaned it up, filtered by StormRow1 time, and added them on to matchingBuoys (used r bind to sequentially add the data from each buoy onto the data from the buoys before it).
+
+The end result was a data frame called *matchingBuoys* where each row was the data from a buoy within 500 km of StormRow1 and in the same year, month, day, hour as StormRow1.  Then we join *matchingBuoys* to a buoyDists so now each row of *matchingBuoys* has distance of that buoy from StormRow1.  Then we clean up the data by changing missing data 99, 999, and 9999 to NAs and averaging rows that are the same buoy number.  We average the rows with the same buoy number since we assume these weather measurement must have occurred at times very close together and are likely very similar.  We do not want several weather measurements from the same buoy that are very similar over weighted the average of all the buoy weather measurements.
+
+We then calculated the weighted mean of each weather variable over all the buoys (Buoy1, ..., BuoyN) for StormRow1.  We weight the mean by 1/distance, so that buoys further away from StormRow1 contribute less to the mean of the weather variables.  We then add rowNum (the row number from the *stormsNorthAtl* dataset) onto the weighted means.
+
+We then put this row of weighted weather variable means into the data frame *weightedMeans* that after the complete loop will contain all of the weighted Means data.  So after running the full loop, *weightedMeans* will contain weighted averages for weather data for all storm rows in *stormsNorthAtl* dataset that have buoys within 500 km of them.
+
+We then added the row number onto *stormsNorthAtl* so we could join the datasets resulting in *stormsWithBuoyData* that had for each row a storm at a specific location and time with average weather variables (calculated from nearby buoys).
+
+
 
 ```{r, eval = FALSE}
 
@@ -638,6 +679,8 @@ dput(stormsWithBuoyData, "stormsWithBuoyData.txt")
 
 ```
 
+Note: From the print outs, this loop takes about 12.5 hours. However, the data we pull in from running this loop different times can be slightly different depending on the connectivity problems (port 80, 404 Not Found).
+
 ```{r}
 
 weightedMeans <- dget("weightedMeans.txt")
@@ -682,7 +725,10 @@ The goal of our project is to assess the ability of the variables measured by th
 
 ### Assessing Data (Neural Networks and Trees)
 
-ADD A DESCRIPTION OF NEURAL NETWORKS
+We were interested in seeing how Neural Networks could perform on our data.  Neural networks have been used for analyzing complex problems involving pattern recognition.  We were curious how neural networks could perform on our data, given that many of the variables were likely correlated.
+
+It has been found that redundancy in input variable selection can be a problem in neural networks since it can result in more local optima for the error function.  Thus, we will also be comparing our results to random forests which deal with variable correlation and interaction well [http://cdn.intechopen.com/pdfs-wm/14882.pdf](http://cdn.intechopen.com/pdfs-wm/14882.pdf).  
+
 
 The "neuralnet" package, available on CRAN, allows us to build neural networks in R.  The reference manual can be found at [https://cran.r-project.org/web/packages/neuralnet/neuralnet.pdf](https://cran.r-project.org/web/packages/neuralnet/neuralnet.pdf), and on the package by its authors can be found at [https://journal.r-project.org/archive/2010-1/RJournal_2010-1_Guenther+Fritsch.pdf](https://journal.r-project.org/archive/2010-1/RJournal_2010-1_Guenther+Fritsch.pdf).  This paper provides a helpful review of the basics of neural networks and of the way in which they are implemented in the neuralnet package.  The following summary of the package functionality comes from this paper. Neural networks built using this package are feed-forward networks (information flows from perceptrons in one layer to the next and does not flow backwards).  The input layer consists of a node for each explanatory variable, and the output layer is made up of nodes representing the response.  The defaults in this package (though all of these can be changed at the user's discretion) are to use one hidden layer, to use SSE (which is equivalent to using MSE) as the cost function, to use resilitent backpropogation to find the local minimum of the cost function, and to use the logistic function ($f(x) = \frac{1}{1 + e^{-x}}$) as the activation function.  Standard backpropogation is simply another name for gradient descent; resilient backpropogation allows for fine-tuning of the gradient descent algorithm by providing for different learning rates for each weight (as opposed to one learning rate for all weights, as in standard backpropogation).  Using these defaults, we will build a neural network to predict the maximum wind gust (Wind\_WMO) of each storm row from the buoy measurements matched to that row.
 
@@ -766,16 +812,23 @@ net.storms <- neuralnet(Wind_WMO ~ WD + WSPD + GST + WVHT + APD + BAR + ATMP + W
                         trainingStorms, hidden = 2)
 ```
 
-INCLUDE SUMMARY OF RESULTS
-
-We can look at a diagram of the neural network.  The nodes on the left are the input nodes, representing the explanatory variables, the nodes in the middle are the two nodes of the hidden layer, and the node on the right is the output of the neural network. 
 
 ```{r}
 # look at what the neural net looks like 
+
 print(net.storms)
+
+#does not plot in markdown file (graphic problems) 
 plot(net.storms)
 
 ```
+
+![](NNplotWriteUp.png)
+Picture of Neural Network Plot (plot function in neuralnet package not working).
+
+
+
+We can look at a diagram of the neural network.  The nodes on the left are the input nodes, representing the explanatory variables, the nodes in the middle are the two nodes of the hidden layer, and the node on the right is the output of the neural network. 
 
 We now use the compute() function to predict Wind_WMO for the training data, and calculate MSE for the predictions.
 
@@ -795,8 +848,11 @@ abline(0,1,lwd=2)
 ```
 
 
+From our neural net analysis, we can see the training SSE was 16.309 and the MSE on the test data was `r round(MSE,4)`.  The test error MSE seems to indicate the neural network did an okay job of predicting the Wind_WMO.  However, when you look at the Predicted vs Real plot, you can see the neural network did not do a very good job at predicting (ideally the points should lie along the line).  
 
 
+
+Next we used random forests to look at the same data and variables (used same training and testing data as we used for neural nets).  We ran nested for loops with different value of the parameters mtry (number of predictors chosen from at each split) and ntree (number of trees) to determine the parameters that would minimize MSE.
 
 
 ```{r, cache = TRUE}
@@ -836,6 +892,10 @@ dput(output.rf, "output.txt")
 
 ```
 
+We plotted the test error rate for the different values of mtry and ntree and found that after about 200 trees the test error rate was about the same.  We also saw that using one predictor gave a much higher test error rate.
+
+We decided to make our random forest with 250 trees and 6 predictors, since from the plot 6 predictors looked to have a lower test error rate.
+
 
 ```{r}
 
@@ -870,3 +930,49 @@ varImpPlot(storm.model.rf, main = "Variable Importance")
 ```
 
 From the random forest model with the parameters of number of predictors (mtry) of 6 and number of trees (ntree) of 250, the test error rate was `r round(error.model.rf, 3)` %.  From the variable importance plot, we can see that WVHT (wave height) is most important for decreasing MSE and increasing node purity.  The next two important variables are WTMP (wave temp) and APD (average wave period).   
+
+
+
+
+###Interpretation
+
+From our neural network model and our random forest model, we learned that most of our variables were not very useful for predicting Wind\_WMO.  In particular, it seemed the neural net we built did not do a very good job of predicting Wind\_WMO as seen by the Predicted vs Real plot.
+
+
+Overall, we conclude that although NOAA uses the buoy data in their calculation of Wind\_WMO, based on our findings use of solely the buoy data information is insufficient (for the storms in the north atlantic basin).
+
+To help visualize the buoy and storm data we collected and integrated, we made a Shiny app that shows the locations of the storms that had buoy data associated with them.
+
+In this app you can select what buoy weather variables (and Wind\_WMO) you are interested in and look at the gradation of their values for a give year.  You can also add the buoys to the map (potentially not all buoys were used in the data collection, but likely most of them were).  This app helps give a sense of the different values of the variables in different years.  It also gives a sense of how the variables are similar to each other.
+
+Additionally, this app show the location of the storms in reference to the buoys from which their weather data was integrated.
+
+[Storms Shiny App](http://rstudio.campus.pomona.edu:3838/cle02012/StormsAndBuoys/)
+url: http://rstudio.campus.pomona.edu:3838/cle02012/StormsAndBuoys/
+
+###Limitations
+
+In sum, our project first involved data scraping, cleaning, and combining of NOAA buoy data and NOAA IBTrACS data. Then, we used this compiled data to assess how well buoys can predict storm windspeed by running two predictive models on our data, a neural network and a random forest. Finally, we created a Shiny app to visualize how the environmental variables from our dataset vary over time and space.
+
+Our selection of data is a primary source of limitation. The models we built using the buoy and storm datasets predict storm severity based on environmental factors in the storm vicinity (determined from buoys). Even though we selected storms and buoys from the same region (the North Atlantic), buoys are concentrated on the coasts, so we have a lot more information about environmental factors for storms right as they are about to hit or are hitting land. We excluded buoys that were outside an arbitrary radius, so we cannot be sure that the radius we selected allows for the best model. Because buoys we used for our data were restricted to within that radius of a storm observation, storms in the middle of the ocean may not have contributed any information to our model because there were no nearby buoys. 
+
+Our data were not randomly selected; in fact, our observations (a storm at a point in time in space) consist of every possible observation within the time frame we were studying and the within the North Atlantic. As such, the predictive value of our model is best applied to predicting storms within the time frame and region, namely our test data. We hope, however, that our approach can be extended beyond the time frame and basin that we chose. Regardless of this, however, the models that we built had large errors and thus are not strong methods of predicting storm windspeed.
+
+A point to note is that our models attempt to predict storm severity based on buoy data, weighted by how nearby the buoy is. This means that we are predicting storm severity every time there is a storm at a particular location. This does not mean that we are predicting that certain environmental conditions lead to a storm of a certain severity; it means that there must already be a storm, but then the conditions will be correlated with a certain severity. This limits the value of using buoys as a means of assessing storm severity, too, because most buoys are close to shore and thus we would not have a lot of warning about storm severity. 
+
+Our choice of modelling technique further restricted the amount of data we could use in our model. We first built a neural network, which requires all observations to have complete information for every variable. Thus, we had to remove rows with missing data to run the neural networks. This meant removing __ [insert how long rowLabs is] observations. We additionally scaled our data to run the neural networks, and we were able to use this same data for building our random forests because scaling data does not change the shape of trees generated based on the data. 
+
+Our models predict well for storm wind speeds that are tropical storms/depressions or Category 1 ( insert figure of error for neural network). This is probably because these storms dominated the data sets (more intense storms are rarer) and thus the vast majority of the observations used to train the data were from these low-category storms. Additionally, larger storms often occur toward the middle of the ocean, farther from land masses, where there are not as many buoys.
+
+As previously stated, our prediction applies to storms (mostly close to shore) in the North Atlantic basin. We hope that they would generalize to storms in other basins, but it would be best to extend our model to those basins. Our code has the potential to load this data, but due to time constraints, we were not able to pull in this data for analysis. If we had more processing time and/or computational power, perhaps by running our for loops with parallel processing, then we could study other basins and other years. We could use our model to test data from other years and other basins. 
+
+In addition to the predictive models we built, we also created a Shiny app to visualize how the environmental conditions we determined from the buoys varied over time and space. Our app selects storm observations for a given year and plots them on a map, color-coded for a variable of choice. We included numerous variables so as to show which variables are most informative and which are redundant. Our Shiny app is also able to show the buoys on the map that have data for the selected year. However, our app shows *all* buoys that have data for that year, not necessarily buoys that contributed data to our compiled dataset. For example, buoys outside of the radius of any storm observation would appear on our Shiny app but would not have contributed to the dataset.
+
+The data set we compiled has potential to answer many more questions. For example, we could use this data to predict the direction that the storm will travel. We could use information about the latitude and longitude of the next observation for a storm, and then determine the direction the storm traveled. Using the environmental variables we compiled from our two datasets, we could then try to predict this direction, which could help inform important storm forecasts. 
+
+As previously mentioned, current forecasts use data from buoys in addition to radar and other measurement techniques. Including data from some of these techniques could help us identify redundancies and/or contradictions between these different measurements. For example, we could compare environmental data from these buoys to satellite and radar measurements. 
+
+Finally, our data were limited to information about storms in the ocean, since our dataset was built with buoy data. Our buoy-generated model therefore does not make predictions on the storms immediately after they hit land, which could be very valuable information. However, storms generally lose intensity over land (such as with Hurricane Patricia), so information about storm severity in the ocean and close to land should yield the expected maximum category of hurricane (via windspeed). This will be most important because these predictions will be for when the storm is just about to hit land and therefore just about to impact a lot of infrastructure and have the greatest financial effect.
+
+While our models had large testing errors, the dataset we compiled provides a good foundation for further and very necessary research on modelling storm severity. Especially in a changing climate, being able to predict damage caused by storms that are becoming increasingly severe and frequent has the potential to reduce costs and save lives.
+
