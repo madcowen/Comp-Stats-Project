@@ -3,6 +3,43 @@ The Brain of the Storm: Using neural networks to predict hurricane severity
 author: Maddi Cowen, Ciaran Evans, and Samantha Morrison  
 date:
 
+Introduction: Storms
+========================================================
+Studying and understanding storms is and important area of research.
+
+![](hurricanePatricia.jpg)
+
+Introduction: Measuring Storms
+========================================================
+A wide array of technology is used to gather storm data.
+![](weatherMeasurement.png)
+
+How well can we use buoys by themselves?
+
+
+NOAA and Buoys
+========================================================
+National Oceanographic and Atmospheric Administration (NOAA) runs National Data Buoy Center (NDBC), which maintains and operates network of buoys:
+
+![](noaaBuoyPic.JPG)
+
+
+The Role of Buoys
+========================================================
+![](buoy42042PicAndLoc.JPG)
+
+Gather oceanic and atmospheric data for use in weather forecasting and assessment. Some variables collected:
+- Wind speed and wind direction
+- Air and water temperature
+- Pressure
+
+
+Project Overview
+========================================================
+Assess ability of buoys by themselves to estimate weather conditions of surrounding areas
+- Collect data on storms in the North Atlantic
+- Match each storm observation with data from nearby buoys
+- Evaluate the ability of buoy measurements to predict storm wind
 
 
 Data Collection
@@ -12,41 +49,45 @@ Data Collection
   - Storms: NOAA Best Track Archive for Climate Stewardship (IBTrACS)
   - Buoys: NOAA National Data Buoy Center (NDBC)
   
-Storms Data
+  
+Gathering Storms Data: IBTrACS
 ========================================================
+Download CSV files for all storms data in years 2000 - 2015 from IBTrACS website, then combine into one file
+
 ![](stormByYearIBTrACS.PNG)
 
-- CSV data for storms in each year on IBTrACS website
-- Records back to late 1800's; we are interested in 2000 - 2015
 
-Storms Data
+Gathering Storms Data: Selecting Basin
 ========================================================
-- Each row in the CSV files is an observation in space and time
-- Variables for location, time, windspeed, and identification
+- Select all storms in the North Atlantic basin
+- Each row is a storm observation at a single location and time
+- Variables in data: Latitude, Longitude, Time, Sustained Wind
 
 ![](stormCSV2015.PNG)
 
-Gathering Storms Data
-========================================================
-- Download CSV files for years 2000 - 2015 from IBTrACS
-- Filter to choose rows with Basin = " NA" (North Atlantic)
 
-NOAA Buoy Data
+Gathering Buoy Data: the Buoys
 ========================================================
-List of all NOAA observation stations:
-
 ![](noaaBuoyList.JPG)
 
-NOAA Buoy Data
+Gathering Buoy Data: Overview
 ========================================================
-Historical standard meteorological data:
+- Use ID number to choose buoys in North Atlantic
+  - these buoy IDs begin with 41, 42, or 44
+- Get latitude and longitude for North Atlantic buoys
+- For each North Atlantic storm observation, find the nearby buoys and average their data
+- Output goal:
+![](exTable.PNG)
 
-![](buoy41046_2007data.JPG)
 
-Matching Storms and Buoys
+Gathering Buoy Data
 ========================================================
-- Want to match storm observations with nearby buoys
-- Will use the location and date-time of storm observations to match
+- Each buoy has a page of historical data
+
+![](buoy42042HistoricalDataPage.JPG)
+
+- Scrape the standard meteorogical data corresponding to location and time for each storm row, then average
+
 
 
 Neural Networks- Perceptron
