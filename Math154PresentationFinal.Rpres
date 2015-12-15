@@ -5,7 +5,7 @@ date:
 
 Introduction: Storms
 ========================================================
-Studying and understanding storms is and important area of research.
+Studying and understanding storms is an important area of research.
 
 ![](hurricanePatricia.jpg)
 
@@ -19,7 +19,7 @@ How well can we use buoys by themselves?
 
 NOAA and Buoys
 ========================================================
-National Oceanographic and Atmospheric Administration (NOAA) runs National Data Buoy Center (NDBC), which maintains and operates network of buoys:
+National Oceanographic and Atmospheric Administration (NOAA) runs National Data Buoy Center (NDBC), which maintains and operates a network of buoys:
 
 ![](noaaBuoyPic.JPG)
 
@@ -43,9 +43,9 @@ Neural Networks- Neurons
 ![](simpleperceptron.PNG)  $\hspace{1cm}$ ![](complexperceptrons.PNG)
 
 
--single perceptrone takes binary inputs $(x_1, x_2, x_3)$ and gives one output by weighting each input $(w_1, w_2, w_3)$
+-single perceptron takes binary inputs $(x_1, x_2, x_3)$ and gives one output by weighting each input $(w_1, w_2, w_3)$
 
--$ouput = \sigma(w\cdot x + b)$, $\hspace{0.5cm}$ $\sigma (z) \equiv \frac{1}{1 + e^{-z}}$
+-$output = \sigma(w\cdot x + b)$, $\hspace{0.5cm}$ $\sigma (z) \equiv \frac{1}{1 + e^{-z}}$
 
 figure and info from: 
 http://neuralnetworksanddeeplearning.com/chap1.html
@@ -54,9 +54,10 @@ http://neuralnetworksanddeeplearning.com/chap1.html
 
 Neural Networks- learning
 ========================================================
--can use for *learning algorithms* that tune weights and biases
+- can use *learning algorithms* that tune weights and biases
 
--want to minimize cost, will use *gradient descent algorithm*: we move opposite the gradient, updating at each step
+- want to minimize cost, can use *gradient descent algorithm*:  
+we move opposite the gradient, updating at each step
 
 
 http://neuralnetworksanddeeplearning.com/chap1.html
@@ -65,15 +66,15 @@ http://neuralnetworksanddeeplearning.com/chap1.html
 NN- variable selection problems
 ========================================================
 
-redundancy: 
+**redundancy** 
 -increases number of local optima in error function (i.e. local minima in cost function)  
 -training slower: harder to map relationship b/w redundant variables and error  
 
-irrelevant variables:  
+**irrelevant variables**  
 -add noise  
 -could mask important relationships  
 
-dimensionality:
+**dimensionality**
 -as dim of model increases linearly, exponential increase in sample size needed   
 
 -many input variable selection algorithms
@@ -82,11 +83,11 @@ http://cdn.intechopen.com/pdfs-wm/14882.pdf
 
 Neural Networks- Storms and Buoy Data
 ========================================================
--removed rows with NAs  
+- removed rows with NAs  
 
--normalized the data between 0, 1
+- normalized the data between 0, 1
 
--split into 3/4 training, 1/4 test  
+- split into 3/4 training, 1/4 test  
 
 Neural Networks- Variables Used
 ========================================================
@@ -154,8 +155,9 @@ Shiny App- Storms and Buoy Data
 Model Summary
 ========================================================
 
--variables given do not seem to give enough info to predict Wind_WMO well  
--potential redundancy in variables, problem for NN
+- variables given do not seem to give enough info to predict Wind_WMO well  
+
+- potential redundancy in variables, problem for NN
 
 
 Data Processing Limitations
@@ -172,7 +174,7 @@ Many buoys are located along the coast, which means:
 
 Chosen within an arbitrary radius
 - Not sure if this is the best radius to include the most relevant data
-- Exludes storms far from buoys
+- Excludes storms far from buoys
 
 Ocean only
 
